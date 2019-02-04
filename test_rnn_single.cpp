@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
             if (x.first == "input") {
                 data[0] = data[1] = 1.0;
             }
-            m[x.first] = migraphx::gpu::to_gpu(migraphx::argument(x.second, &data[0]));
+            m[x.first] = migraphx::gpu::to_gpu(migraphx::argument{x.second, data.data()});
         }
 
         auto resarg = migraphx::gpu::from_gpu(prog.eval(m));
@@ -68,13 +68,19 @@ int main(int argc, char **argv) {
     else 
     {
         std::cout << "cpu is used." << std::endl;
+        std::vector<float> data;
         for (auto &&x : prog.get_parameter_shapes())
         {
-            std::vector<float> data(x.second.elements(), 0.0f);
+            std::cout << "x.first = " << x.first << std::endl;
+            data.resize(x.second.elements(), 0.0f);
             if (x.first == "input") {
                 data[0] = data[1] = 1.0;
             }
-            m[x.first] = migraphx::argument(x.second, &data[0]);
+            m[x.first] = migraphx::argument{x.second, data.data()};
+            if (x.first == "input") {
+                std::cout << "input = " << std::endl;
+                std::cout << m[x.first] << std::endl;
+            }
         }
 
         auto resarg = prog.eval(m);

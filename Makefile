@@ -19,7 +19,8 @@ EXE_FILES = myAdd \
             myConv2d \
             testTypename \
             test_char_rnn \
-            test_rnn \
+            test_rnn_both \
+            test_rnn_single \
             test_shape \
             test_gather \
             test_const_eval \
@@ -35,7 +36,8 @@ SOURCE_FILES=myAdd.cpp \
     myConvolution.cpp \
     testTypename.cpp \
     test_char_rnn.cpp \
-    test_rnn.cpp \
+    test_rnn_both.cpp \
+    test_rnn_single.cpp \
     test_shape.cpp \
     test_gather.cpp \
     test_const_eval.cpp \
@@ -63,7 +65,10 @@ test_shape: $(OBJ)/test_shape.o
 test_char_rnn: $(OBJ)/test_char_rnn.o
 	$(CXX) -o $@ $^ ${MIGRAPHLIBDIR} ${MIGRAPHLIBS} 
 
-test_rnn: $(OBJ)/test_rnn.o
+test_rnn_single: $(OBJ)/test_rnn_single.o
+	$(CXX) -o $@ $^ ${MIGRAPHLIBDIR} ${MIGRAPHLIBS} 
+
+test_rnn_both: $(OBJ)/test_rnn_both.o
 	$(CXX) -o $@ $^ ${MIGRAPHLIBDIR} ${MIGRAPHLIBS} 
 
 testTypename: $(OBJ)/testTypename.o
