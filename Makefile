@@ -25,7 +25,10 @@ EXE_FILES = myAdd \
             test_gather \
             test_const_eval \
             test_mm \
-            rnn_gpu
+            rnn_gpu \
+            gru_test_1direct \
+            gru_test_bidirect
+            
 
 all: create copy $(EXE_FILES)
 
@@ -42,13 +45,21 @@ SOURCE_FILES=myAdd.cpp \
     test_gather.cpp \
     test_const_eval.cpp \
     test_mm.cpp \
-    rnn_gpu.cpp
+    rnn_gpu.cpp \
+    gru_test_1direct.cpp \
+    gru_test_bidirect.cpp
 
 OBJ_FILES=$(SOURCE_FILES:.cpp=.o)
 
 OBJ=obj
 $(OBJ)/%.o : %.cpp
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+gru_test_1direct: $(OBJ)/gru_test_1direct.o
+	$(CXX) -o $@ $^ ${MIGRAPHLIBDIR} ${MIGRAPHLIBS} 
+
+gru_test_bidirect: $(OBJ)/gru_test_bidirect.o
+	$(CXX) -o $@ $^ ${MIGRAPHLIBDIR} ${MIGRAPHLIBS} 
 
 rnn_gpu: $(OBJ)/rnn_gpu.o
 	$(CXX) -o $@ $^ ${MIGRAPHLIBDIR} ${MIGRAPHLIBS} 
