@@ -23,6 +23,7 @@ migraphx::program load_onnx_file(std::string file_name) {
 
 template<typename T>
 void print_res(std::vector<T> &res, std::size_t nd, std::size_t batch_size, std::size_t hidden_size) {
+    std::cout << "output size = " << res.size() << std::endl;
     for (size_t i = 0; i < res.size(); i++) {
         std::cout << std::setw(12) << res.at(i) <<",";
 

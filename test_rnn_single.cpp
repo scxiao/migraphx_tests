@@ -36,10 +36,12 @@ int main(int argc, char **argv) {
 
     if (b_use_gpu) 
     {
+        std::cout << "gpu is used." << std::endl;
         prog.compile(migraphx::gpu::target{});
     }
     else 
     {
+        std::cout << "cpu is used." << std::endl;
         prog.compile(migraphx::cpu::target{});
     }
 
@@ -50,47 +52,41 @@ int main(int argc, char **argv) {
         std::cout << x.second << std::endl;
     }
     std::vector<float> res;
-    if (b_use_gpu)
+    std::vector<std::vector<float>> data(prog.get_parameter_shapes().size());
+    int index = 0;
+    for (auto &&x : prog.get_parameter_shapes())
     {
-        std::cout << "gpu is used." << std::endl;
-        for (auto &&x : prog.get_parameter_shapes())
+        std::cout << "x.first.shape = " << x.first << std::endl;
+        if (x.first == "input") {
+            data[index].resize(x.second.elements(), 0.0f);
+            data[index][0] = data[index][1] = 1.0;
+        }
+        else if (x.first == "1")
         {
-            std::vector<float> data(x.second.elements(), 0.0f);
-            if (x.first == "input") {
-                data[0] = data[1] = 1.0;
-            }
-            m[x.first] = migraphx::gpu::to_gpu(migraphx::argument{x.second, data.data()});
+            data[index].resize(x.second.elements(), 1.0f);
+        }
+        else
+        {
+            data[index].resize(x.second.elements(), 1.0f);
         }
 
+        if (b_use_gpu) {
+            m[x.first] = migraphx::gpu::to_gpu(migraphx::argument{x.second, data[index++].data()});
+        }
+        else {
+            m[x.first] = migraphx::argument{x.second, data[index++].data()};
+        }
+    }
+
+    if (b_use_gpu) {
         auto resarg = migraphx::gpu::from_gpu(prog.eval(m));
         resarg.visit([&](auto output) { res.assign(output.begin(), output.end()); } );
+        std::cout << "gpu result: " << std::endl;
     }
-    else 
-    {
-        std::cout << "cpu is used." << std::endl;
-        std::vector<std::vector<float>> data(prog.get_parameter_shapes().size());
-        int index = 0;
-        for (auto &&x : prog.get_parameter_shapes())
-        {
-            std::cout << "x.first.shape = " << x.first << std::endl;
-            if (x.first == "input") {
-                data[index].resize(x.second.elements(), 0.0f);
-                data[index][0] = data[index][1] = 1.0;
-            }
-            else if (x.first == "1")
-            {
-                data[index].resize(x.second.elements(), 1.0f);
-            }
-            else
-            {
-                data[index].resize(x.second.elements(), 1.0f);
-            }
-            m[x.first] = migraphx::argument{x.second, data[index++].data()};
-            std::cout << "x.first = " << m[x.first] << std::endl;
-        }
-
+    else {
         auto resarg = prog.eval(m);
         resarg.visit([&](auto output) { res.assign(output.begin(), output.end()); } );
+        std::cout << "cpu result: " << std::endl;
     }
 
 
