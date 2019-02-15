@@ -114,7 +114,7 @@ migraphx::program create_program()
 
     auto output = p.add_instruction(migraphx::op::rnn{hidden_size,
                                         {migraphx::op::tanh{}, migraphx::op::tanh{}},
-                                        migraphx::op::rnn::bidirectional,
+                                        migraphx::op::rnn_direction::bidirectional,
                                         //migraphx::op::rnn::forward,
                                         clip},
                       seq,

@@ -7,6 +7,16 @@
 #include <migraphx/instruction.hpp>
 #include <migraphx/onnx.hpp>
 
+migraphx::program load_onnx_file(std::string file_name) {
+    auto prog = migraphx::parse_onnx(file_name);
+
+    std::cout << "prog = " << std::endl;
+    std::cout << prog << std::endl;
+
+    return prog;
+}
+
+
 int main(int argc, char **argv) {
     if (argc != 2) {
         std::cout << "Usage: " << argv[0] << " onnx_file" << std::endl;

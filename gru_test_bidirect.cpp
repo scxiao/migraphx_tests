@@ -144,7 +144,7 @@ int main()
 
 			auto concat_hs = p.add_instruction(migraphx::op::gru{hidden_size,
 												{migraphx::op::sigmoid{}, migraphx::op::tanh{}},
-												migraphx::op::gru::bidirectional,
+												migraphx::op::rnn_direction::bidirectional,
 												clip,
                                                 1},
 							  seq,
@@ -153,7 +153,7 @@ int main()
 							  bias,
                               und,
                               ih);
-            p.add_instruction(migraphx::op::gru_last_output{}, concat_hs);
+            p.add_instruction(migraphx::op::rnn_last_output{}, concat_hs);
 			p.compile(migraphx::cpu::target{});
 
 			auto hs_concat = p.eval({});

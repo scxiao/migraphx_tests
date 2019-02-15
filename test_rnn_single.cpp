@@ -68,19 +68,25 @@ int main(int argc, char **argv) {
     else 
     {
         std::cout << "cpu is used." << std::endl;
-        std::vector<float> data;
+        std::vector<std::vector<float>> data(prog.get_parameter_shapes().size());
+        int index = 0;
         for (auto &&x : prog.get_parameter_shapes())
         {
-            std::cout << "x.first = " << x.first << std::endl;
-            data.resize(x.second.elements(), 0.0f);
+            std::cout << "x.first.shape = " << x.first << std::endl;
             if (x.first == "input") {
-                data[0] = data[1] = 1.0;
+                data[index].resize(x.second.elements(), 0.0f);
+                data[index][0] = data[index][1] = 1.0;
             }
-            m[x.first] = migraphx::argument{x.second, data.data()};
-            if (x.first == "input") {
-                std::cout << "input = " << std::endl;
-                std::cout << m[x.first] << std::endl;
+            else if (x.first == "1")
+            {
+                data[index].resize(x.second.elements(), 1.0f);
             }
+            else
+            {
+                data[index].resize(x.second.elements(), 1.0f);
+            }
+            m[x.first] = migraphx::argument{x.second, data[index++].data()};
+            std::cout << "x.first = " << m[x.first] << std::endl;
         }
 
         auto resarg = prog.eval(m);

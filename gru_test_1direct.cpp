@@ -99,7 +99,7 @@ int main()
 
 			p.add_instruction(migraphx::op::gru{hidden_size,
 												{migraphx::op::sigmoid{}, migraphx::op::tanh{}},
-												migraphx::op::gru::reverse,
+												migraphx::op::rnn_direction::reverse,
 												clip,
                                                 0},
 							  seq,

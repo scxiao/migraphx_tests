@@ -1,20 +1,27 @@
 
 MIGRAPHFOLDER=/home/scxiao/Workplace/projects/AMDMIGraphX
+#MIGRAPHFOLDER=/home/scxiao/Workplace/projects/MIGraph
 MIGRAPHINCLUDE= -I$(MIGRAPHFOLDER)/src/include \
                 -I$(MIGRAPHFOLDER)/src/targets/gpu/include \
                 -I$(MIGRAPHFOLDER)/src/targets/cpu/include \
                 -I$(MIGRAPHFOLDER)/test/include \
-                -I$(MIGRAPHFOLDER)/deps/include
+                -I$(MIGRAPHFOLDER)/deps_py/include
 
+CXX=/opt/rocm/bin/hcc
 DEBUG=_debug
-MIGRAPHLIBDIR = -L $(MIGRAPHFOLDER)/build$(DEBUG)/src/onnx -L $(MIGRAPHFOLDER)/build$(DEBUG)/src -L$(MIGRAPHFOLDER)/build$(DEBUG)/src/targets/gpu -L$(MIGRAPHFOLDER)/build$(DEBUG)/src/targets/cpu
-MIGRAPHLIBS = -lmigraphx -lmigraphx_cpu -lmigraphx_device -lmigraphx_gpu -lmigraphx_onnx
-CXXFLAGS=-g -std=c++14 ${MIGRAPHINCLUDE}
+#DEBUG=_f46c700
+MIGRAPHLIBDIR = -L $(MIGRAPHFOLDER)/build$(DEBUG)/src/onnx \
+                -L $(MIGRAPHFOLDER)/build$(DEBUG)/src \
+                -L$(MIGRAPHFOLDER)/build$(DEBUG)/src/targets/gpu \
+                -L$(MIGRAPHFOLDER)/build$(DEBUG)/src/targets/cpu \
+                -L$(MIGRAPHFOLDER)/deps_py/lib
+
+MIGRAPHLIBS = -lmigraphx -lmigraphx_cpu -lmigraphx_device -lmigraphx_gpu -lmigraphx_onnx -lhip_hcc -lMIOpen
+CXXFLAGS=-g -std=c++14 ${MIGRAPHINCLUDE} 
 MIGRAPHLIBPATH = /home/scxiao/Workplace/software/migraphlibs
 
 EXE_FILES = myAdd \
             mySin \
-            mySinGpu \
             load_onnx \
             myConv2d \
             testTypename \
@@ -26,6 +33,7 @@ EXE_FILES = myAdd \
             test_const_eval \
             test_mm \
             rnn_gpu \
+            mySinGpu \
             gru_test_1direct \
             gru_test_bidirect
             
