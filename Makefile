@@ -35,7 +35,8 @@ EXE_FILES = myAdd \
             rnn_gpu \
             mySinGpu \
             gru_test_1direct \
-            gru_test_bidirect
+            gru_test_bidirect \
+            test_eleminate_contiguous
             
 
 all: create copy $(EXE_FILES)
@@ -55,13 +56,17 @@ SOURCE_FILES=myAdd.cpp \
     test_mm.cpp \
     rnn_gpu.cpp \
     gru_test_1direct.cpp \
-    gru_test_bidirect.cpp
+    gru_test_bidirect.cpp \
+    test_eleminate_contiguous.cpp
 
 OBJ_FILES=$(SOURCE_FILES:.cpp=.o)
 
 OBJ=obj
 $(OBJ)/%.o : %.cpp
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
+
+test_eleminate_contiguous: $(OBJ)/test_eleminate_contiguous.o
+	$(CXX) -o $@ $^ ${MIGRAPHLIBDIR} ${MIGRAPHLIBS} 
 
 gru_test_1direct: $(OBJ)/gru_test_1direct.o
 	$(CXX) -o $@ $^ ${MIGRAPHLIBDIR} ${MIGRAPHLIBS} 

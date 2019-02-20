@@ -80,9 +80,6 @@ migraphx::program create_program()
     migraphx::shape b_shape{migraphx::shape::float_type, {num_dirct, 8 * hidden_size}};
     migraphx::shape ih_shape{migraphx::shape::float_type, {num_dirct, batch_size, hidden_size}};
     std::vector<float> ih_data(ih_shape.elements(), 1.0f);
-    //std::vector<float> ih_data{-0.3125, 0.75, -0.75, -0.5, 0.9375, -0.9375, 0.625, 0.25, -0.0625, -1, -0.875, -0.625,
-    //    -0.5, 0.6875, 0.3125, -0.8125};
-    //std::vector<float> ih_data{-0.3125, 0.75, -0.75, -0.5, 0.9375, -0.9375, 0.625, 0.25};
 
     auto seq = p.add_parameter("seq", in_shape);
     auto w = p.add_parameter("w", w_shape);
@@ -91,7 +88,6 @@ migraphx::program create_program()
     auto ih = p.add_parameter("ih", ih_shape);
     auto ic = p.add_parameter("ic", ih_shape);
     auto und = p.add_instruction(migraphx::op::undefined{});
-    //auto ih = p.add_literal(migraphx::literal{ih_shape, ih_data});
 
     auto output = p.add_instruction(migraphx::op::lstm{hidden_size,
                                         {migraphx::op::sigmoid{}, migraphx::op::tanh{}, migraphx::op::tanh{}},
@@ -106,7 +102,7 @@ migraphx::program create_program()
                       ic,
                       und);
 
-    //p.add_instruction(migraphx::op::rnn_last_output{}, output);
+    //p.add_instruction(migraphx::op::lstm_last_cell_output{}, output);
     return p;
 }
 

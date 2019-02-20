@@ -79,10 +79,10 @@ void run_cpu(migraphx::program &p, std::vector<float> &res)
     }
 
     std::cout << "nd = " << nd << ", batch_size = " << batch_size << ", hidden_size = " << hidden_size << std::endl;
-    if (batch_size == 0) {
+    if (batch_size == 1) {
         batch_size = 3;
     }
-    if (hidden_size == 0)
+    if (hidden_size == 1)
     {
         hidden_size = 5;
     }
@@ -128,10 +128,10 @@ void run_gpu(migraphx::program &p, std::vector<float> &res)
     result.visit([&](auto output) { res.assign(output.begin(), output.end()); });
 
     std::cout << "nd = " << nd << ", batch_size = " << batch_size << ", hidden_size = " << hidden_size << std::endl;
-    if (batch_size == 0) {
+    if (batch_size == 1) {
         batch_size = 3;
     }
-    if (hidden_size == 0)
+    if (hidden_size == 1)
     {
         hidden_size = 5;
     }
