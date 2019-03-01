@@ -20,18 +20,40 @@ auto get_hash(const T& x)
 
 int main()
 {
-    std::size_t axis = 1;
+    int axis = -2;
+    {
+        migraphx::program p;
+
+        std::vector<float> data(3 * 3);
+        std::iota(data.begin(), data.end(), 0.5);
+        migraphx::shape s{migraphx::shape::float_type, {3, 3}};
+        auto a0 = p.add_literal(migraphx::literal{s, data});
+        migraphx::shape s_indices{migraphx::shape::int32_type, {1, 2}};
+        std::vector<int> indices{0, 2};
+        auto a1 = p.add_literal(migraphx::literal{s_indices, indices});
+        auto g = p.add_instruction(migraphx::op::gather{axis}, a0, a1);
+
+        p.compile(migraphx::cpu::target{});
+        auto result = p.eval({});
+        std::vector<float> resData(4 * 5);
+        result.visit([&](auto output) { resData.assign(output.begin(), output.end()); });
+
+        std::cout << "res = " << std::endl;
+        for_each(resData.begin(), resData.end(), [](float & i) { std::cout << i << "\t"; });
+        std::cout << std::endl;
+    }
+
     //{
     //    migraphx::program p;
 
-    //    std::vector<float> data(3 * 3);
-    //    std::iota(data.begin(), data.end(), 0.5);
-    //    migraphx::shape s{migraphx::shape::float_type, {3, 3}};
+    //    std::vector<float> data{1, 2, 3, 4};
+    //    //std::iota(data.begin(), data.end(), 0.5);
+    //    migraphx::shape s{migraphx::shape::float_type, {2, 2}};
     //    auto a0 = p.add_literal(migraphx::literal{s, data});
-    //    migraphx::shape s_indices{migraphx::shape::int32_type, {1, 2}};
-    //    std::vector<int> indices{0, 2};
+    //    migraphx::shape s_indices{migraphx::shape::int32_type, {2, 2}};
+    //    std::vector<int> indices{0, 0, 1, 0};
     //    auto a1 = p.add_literal(migraphx::literal{s_indices, indices});
-    //    auto g = p.add_instruction(migraphx::op::gather{axis}, a0, a1);
+    //    auto g = p.add_instruction(migraphx::op::gather_torch{axis}, a0, a1);
     //    //migraphx::argument gr = g->eval();
     //    //std::cout << "gather output = " << gr << std::endl;
 
@@ -44,30 +66,6 @@ int main()
     //    for_each(resData.begin(), resData.end(), [](float & i) { std::cout << i << "\t"; });
     //    std::cout << std::endl;
     //}
-
-    {
-        migraphx::program p;
-
-        std::vector<float> data{1, 2, 3, 4};
-        //std::iota(data.begin(), data.end(), 0.5);
-        migraphx::shape s{migraphx::shape::float_type, {2, 2}};
-        auto a0 = p.add_literal(migraphx::literal{s, data});
-        migraphx::shape s_indices{migraphx::shape::int32_type, {2, 2}};
-        std::vector<int> indices{0, 0, 1, 0};
-        auto a1 = p.add_literal(migraphx::literal{s_indices, indices});
-        auto g = p.add_instruction(migraphx::op::gather_torch{axis}, a0, a1);
-        //migraphx::argument gr = g->eval();
-        //std::cout << "gather output = " << gr << std::endl;
-
-        p.compile(migraphx::cpu::target{});
-        auto result = p.eval({});
-        std::vector<float> resData(4 * 5);
-        result.visit([&](auto output) { resData.assign(output.begin(), output.end()); });
-
-        std::cout << "res = " << std::endl;
-        for_each(resData.begin(), resData.end(), [](float & i) { std::cout << i << "\t"; });
-        std::cout << std::endl;
-    }
 
 
     //{

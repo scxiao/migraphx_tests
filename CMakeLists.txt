@@ -30,13 +30,19 @@ link_directories(${MIGRAPHFOLDER}/build${DEBUG}/src/onnx
                  ${MIGRAPHFOLDER}/build${DEBUG}/src/targets/cpu
                  ${MIGRAPHFOLDER}/deps_py/lib)
 
-file(GLOB test_examples *.cpp)
+file(GLOB util_SRC "*.cpp")
+file(GLOB test_examples test_*.cpp)
+file(GLOB util_HDR "*.hpp")
+list(REMOVE_ITEM util_SRC ${test_examples})
+
+add_library(test_util SHARED ${util_SRC})
+
 foreach(filepath_name ${test_examples})
     get_filename_component(src_name ${filepath_name} NAME)
     get_filename_component(bin_name ${src_name} NAME_WE)
     message("source file: " ${src_name} " ---> bin: " ${bin_name})
     add_executable(${bin_name} ${src_name})
-    target_link_libraries(${bin_name} migraphx migraphx_cpu migraphx_device migraphx_gpu migraphx_onnx hip_hcc MIOpen)
+    target_link_libraries(${bin_name} migraphx migraphx_cpu migraphx_device migraphx_gpu migraphx_onnx hip_hcc MIOpen test_util)
     add_dependencies(${bin_name} copylibs)
 endforeach(src_name)
 
