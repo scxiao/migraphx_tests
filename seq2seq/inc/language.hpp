@@ -11,11 +11,12 @@ public:
     CLanguage(std::string nm);
     void add_word(std::string &word);
     void add_sentence(std::string &sent);
-    std::string get_word(std::int index);
+    std::string get_word(int index);
     int get_word_index(std::string &word);
     int get_word_num() { return static_cast<int>(index2word.size()); }
 
-    std::vector<int> get_sentence_indices(std::string &sent)
+    std::vector<int> get_sentence_indices(std::string &sent);
+
 private:
     void init();
 

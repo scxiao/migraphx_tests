@@ -43,6 +43,6 @@ foreach(filepath_name ${test_examples})
     message("source file: " ${src_name} " ---> bin: " ${bin_name})
     add_executable(${bin_name} ${src_name})
     target_link_libraries(${bin_name} migraphx migraphx_cpu migraphx_device migraphx_gpu migraphx_onnx hip_hcc MIOpen test_util)
-    add_dependencies(${bin_name} copylibs)
+#    add_dependencies(${bin_name} copylibs)
 endforeach(src_name)
 

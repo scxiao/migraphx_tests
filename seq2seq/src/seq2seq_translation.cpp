@@ -1,3 +1,4 @@
+#include <cassert>
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -6,27 +7,32 @@
 #include "load_onnx.hpp"
 #include "language.hpp"
 #include "s2s_utilities.hpp"
+#include <migraphx/cpu/target.hpp>
+#include <migraphx/generate.hpp>
 
 std::vector<std::pair<std::string, std::string>> all_sentences;
 
 std::pair<std::vector<int>, std::vector<int>> indices_of_sentence(
-        const CLanguage& input_lang, 
-        const CLanguage& output_lang,
-        std::pair<std::string, std::string> &sent_pair)
+        CLanguage& input_lang, 
+        CLanguage& output_lang,
+        std::string &sent)
 {
-    auto input_indices = input_lang.get_sentence_indices(sent_pair.first);
-    auto output_indices = output_lang.get_sentence_indices(sent_pair.second);
+    auto pos = sent.find('\t', 0);
+    assert (pos != std::string::npos);
+    auto sent_first = sent.substr(0, pos);
+    auto sent_second = sent.substr(pos + 1);
+    auto input_indices = input_lang.get_sentence_indices(sent_first);
+    auto output_indices = output_lang.get_sentence_indices(sent_second);
 
     return std::make_pair(input_indices, output_indices);
 }
 
-std::vector<std::string> evaluate_cpu(migarphx::program& encoder, migraphx::program& decoder, 
-        const CLanguage& input_lang, const CLanguage& output_lang, 
+std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::program& decoder, 
+        CLanguage& input_lang, CLanguage& output_lang, 
         const size_t hidden_size, const std::size_t max_sent_len, std::string& sent)
 {
     encoder.compile(migraphx::cpu::target{});
     decoder.compile(migraphx::cpu::target{});
-    migraphx::program logsoftmax_prog = create_program(1);
 
     auto indices_pair = indices_of_sentence(input_lang, output_lang, sent);
     auto& input_indices = indices_pair.first;
@@ -64,11 +70,11 @@ std::vector<std::string> evaluate_cpu(migarphx::program& encoder, migraphx::prog
     }
 
     // run the decoder
-    std::vector<float> decoder_input{SOS_token};
+    std::vector<int> decoder_input{SOS_token};
     std::vector<float> decoder_hidden(encoder_hidden);
     std::vector<std::string> decoder_words{};
 
-    for (st::size_t i = 0; i < max_sent_len; ++i)
+    for (std::size_t i = 0; i < max_sent_len; ++i)
     {
         migraphx::program::parameter_map m;
         for (auto&& x : decoder.get_parameter_shapes())
@@ -96,7 +102,7 @@ std::vector<std::string> evaluate_cpu(migarphx::program& encoder, migraphx::prog
         outputs_arg.visit([&](auto output) { outputs.assign(output.begin(), output.end()); });
 
         std::vector<float> decoder_output(outputs.begin(), outputs.begin() + output_lang.get_word_num());
-        decode_hidden.assign(outputs.begin() + output_lang.get_word_num(), outputs.end());
+        decoder_hidden.assign(outputs.begin() + output_lang.get_word_num(), outputs.end());
 
         // compute the words from the decoder output
         std::size_t max_index = std::distance(decoder_output.begin(), std::max_element(decoder_output.begin(),
@@ -159,13 +165,13 @@ int main(int argc, char **argv)
         }
 
         all_sentences.push_back(std::make_pair(l1_sent, l2_sent));
-        lang1.add_sentence(l1_sent);
-        lang2.add_sentence(l2_sent);
+        input_lang.add_sentence(l1_sent);
+        output_lang.add_sentence(l2_sent);
     }
 
     // load the models for the encoder and decoder
-    migraphx::program encoder = load_onnx("s2s_encoder.onnx");
-    migraphx::program decoder = load_onnx("s2s_decoder.onnx");
+    migraphx::program encoder = load_onnx_file("s2s_encoder.onnx");
+    migraphx::program decoder = load_onnx_file("s2s_decoder.onnx");
 
     std::size_t hidden_size = 256;
     

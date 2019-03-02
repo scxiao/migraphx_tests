@@ -13,7 +13,7 @@ auto get_hash(const T& x)
 extern const int SOS_token;
 extern const int EOS_token;
 
-std::vector<std::string> convert_sent_to_words(std::string &sent);
+std::vector<std::string> convert_sent_to_words(std::string &sent, char delim = ' ');
 
 #endif
 

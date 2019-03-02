@@ -1,10 +1,11 @@
+#include <algorithm>
 #include "language.hpp"
 #include "s2s_utilities.hpp"
 
 const int SOS_token = 0;
 const int EOS_token = 1;
 
-CLanguage::CLanguage(std::string nm) : name(nm)
+CLanguage::CLanguage(std::string lang_name) : name(lang_name)
 {
     init();
 }
@@ -27,12 +28,12 @@ void CLanguage::add_word(std::string &word)
 void CLanguage::add_sentence(std::string &sent)
 {
     auto words = convert_sent_to_words(sent);
-    for_each(words.begin(), words.end(), [](auto &word) {
-        add_word(word);
+    for_each(words.begin(), words.end(), [&](auto &word) {
+        this->add_word(word);
     });
 }
 
-std::string CLanguage::get_word(std::int index) {
+std::string CLanguage::get_word(int index) {
     if (index < index2word.size() && index >= 0)
     {
         return index2word.at(index);
@@ -59,8 +60,8 @@ std::vector<int> CLanguage::get_sentence_indices(std::string &sent)
 {
     auto words = convert_sent_to_words(sent);
     std::vector<int> sent_indices(words.size());
-    std::transform(words.begin(), words.end(), sent_indices.begin(), [](auto &word) {
-        return get_word_index(word);
+    std::transform(words.begin(), words.end(), sent_indices.begin(), [&](auto &word) {
+        return this->get_word_index(word);
     });
     sent_indices.push_back(EOS_token);
 
