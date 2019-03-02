@@ -4,6 +4,15 @@
 #include <vector>
 #include <string>
 
+template <class T>
+auto get_hash(const T& x)
+{
+    return std::hash<T>{}(x);
+}
+
+extern const int SOS_token;
+extern const int EOS_token;
+
 std::vector<std::string> convert_sent_to_words(std::string &sent);
 
 #endif

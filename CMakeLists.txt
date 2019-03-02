@@ -6,7 +6,7 @@ project (Test_migraphx)
 set (MIGRAPHFOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
 set (MIGRAPHLIBPATH /home/scxiao/Workplace/software/migraphlibs)
 set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
-set(CMAKE_CXX_STANDARD 14)
+set (CMAKE_CXX_STANDARD 14)
 set (DEBUG _debug)
 
 add_custom_target(

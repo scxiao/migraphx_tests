@@ -1,6 +1,9 @@
 #include "language.hpp"
 #include "s2s_utilities.hpp"
 
+const int SOS_token = 0;
+const int EOS_token = 1;
+
 CLanguage::CLanguage(std::string nm) : name(nm)
 {
     init();
@@ -59,6 +62,7 @@ std::vector<int> CLanguage::get_sentence_indices(std::string &sent)
     std::transform(words.begin(), words.end(), sent_indices.begin(), [](auto &word) {
         return get_word_index(word);
     });
+    sent_indices.push_back(EOS_token);
 
     return sent_indices;
 }
