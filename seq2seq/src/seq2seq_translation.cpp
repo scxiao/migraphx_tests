@@ -4,6 +4,8 @@
 #include <iostream>
 #include <utility>
 #include <algorithm>
+#include <cstdlib>
+#include <ctime>
 #include "load_onnx.hpp"
 #include "language.hpp"
 #include "s2s_utilities.hpp"
@@ -11,11 +13,12 @@
 #include <migraphx/generate.hpp>
 
 std::vector<std::pair<std::string, std::string>> all_sentences;
+const std::size_t max_sent_len = 10;
 
 std::pair<std::vector<int>, std::vector<int>> indices_of_sentence(
         CLanguage& input_lang, 
         CLanguage& output_lang,
-        std::string &sent)
+        const std::string &sent)
 {
     auto pos = sent.find('\t', 0);
     assert (pos != std::string::npos);
@@ -27,9 +30,15 @@ std::pair<std::vector<int>, std::vector<int>> indices_of_sentence(
     return std::make_pair(input_indices, output_indices);
 }
 
+std::pair<std::string, std::string>& get_random_sentence_pair(std::vector<std::pair<std::string, std::string>> &sentences)
+{
+    int index = rand() % sentences.size();
+    return sentences.at(index);
+}
+
 std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::program& decoder, 
         CLanguage& input_lang, CLanguage& output_lang, 
-        const size_t hidden_size, const std::size_t max_sent_len, std::string& sent)
+        const size_t hidden_size, const std::size_t max_sent_len, const std::string& sent)
 {
     encoder.compile(migraphx::cpu::target{});
     decoder.compile(migraphx::cpu::target{});
@@ -120,6 +129,18 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
     return decoder_words;
 }
 
+std::string convert_to_sentence(std::vector<std::string> vec_words)
+{
+    std::string ret_sent;
+    for_each(vec_words.begin(), vec_words.end(), [&](auto word) {
+        ret_sent.append(word);
+        ret_sent.append(1, ' ');
+    });
+
+    return ret_sent;
+}
+
+
 int main(int argc, char **argv)
 {
     if (argc != 5)
@@ -173,10 +194,24 @@ int main(int argc, char **argv)
     migraphx::program encoder = load_onnx_file("s2s_encoder.onnx");
     migraphx::program decoder = load_onnx_file("s2s_decoder.onnx");
 
-    std::size_t hidden_size = 256;
-    
+    int hidden_size = 256;
+    int n_words_in_lan = input_lang.get_word_num();
+    int n_words_out_lan = output_lang.get_word_num();
+
+    srand(time(nullptr));
+
+    int sent_num = 100;
+    for (int sent_no = 0; sent_no < sent_num; ++sent_no)
+    {
+        auto sent_pair = get_random_sentence_pair(all_sentences);
+        auto vec_words = evaluate_cpu(encoder, decoder, input_lang, output_lang, 
+                            hidden_size, max_sent_len, sent_pair.first);
+        auto output_sentence = convert_to_sentence(vec_words);
+        std::cout << "Input    sentence: " << sent_pair.first << std::endl;
+        std::cout << "Output   sentence: " << output_sentence << std::endl;
+        std::cout << "Expected sentence: " << sent_pair.second << std::endl;
+    }
 
     return 0;
 }
-
 

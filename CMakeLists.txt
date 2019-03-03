@@ -3,32 +3,34 @@ project (Test_migraphx)
 
 
 
-set (MIGRAPHFOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
-set (MIGRAPHLIBPATH /home/scxiao/Workplace/software/migraphlibs)
+set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
+set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build)
+set (MIGRAPHX_DEPS ${MIGRAPHX_FOLDER}/deps_py/lib)
+#set (MIGRAPHX_LIB_PATH /home/scxiao/Workplace/software/migraphlibs)
 set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
 set (CMAKE_CXX_STANDARD 14)
 set (DEBUG _debug)
 
 add_custom_target(
     copylibs
-	COMMAND cp ${MIGRAPHFOLDER}/build${DEBUG}/src/onnx/libmigraphx_onnx.so          ${MIGRAPHLIBPATH}/.
-	COMMAND cp ${MIGRAPHFOLDER}/build${DEBUG}/src/libmigraphx.so                    ${MIGRAPHLIBPATH}/.
-	COMMAND cp ${MIGRAPHFOLDER}/build${DEBUG}/src/targets/cpu/libmigraphx_cpu.so    ${MIGRAPHLIBPATH}/.
-	COMMAND cp ${MIGRAPHFOLDER}/build${DEBUG}/src/targets/gpu/libmigraphx_gpu.so    ${MIGRAPHLIBPATH}/.
-	COMMAND cp ${MIGRAPHFOLDER}/build${DEBUG}/src/targets/gpu/libmigraphx_device.so ${MIGRAPHLIBPATH}/.)
+	COMMAND cp ${MIGRAPHX_BUILD}/src/onnx/libmigraphx_onnx.so          ${MIGRAPHX_LIB_PATH}/.
+	COMMAND cp ${MIGRAPHX_BUILD}/src/libmigraphx.so                    ${MIGRAPHX_LIB_PATH}/.
+	COMMAND cp ${MIGRAPHX_BUILD}/src/targets/cpu/libmigraphx_cpu.so    ${MIGRAPHX_LIB_PATH}/.
+	COMMAND cp ${MIGRAPHX_BUILD}/src/targets/gpu/libmigraphx_gpu.so    ${MIGRAPHX_LIB_PATH}/.
+	COMMAND cp ${MIGRAPHX_BUILD}/src/targets/gpu/libmigraphx_device.so ${MIGRAPHX_LIB_PATH}/.)
 
 
-include_directories(${MIGRAPHFOLDER}/src/include
-                    ${MIGRAPHFOLDER}/src/targets/gpu/include
-                    ${MIGRAPHFOLDER}/src/targets/cpu/include
-                    ${MIGRAPHFOLDER}/test/include
-                    ${MIGRAPHFOLDER}/deps_py/include)
+include_directories(${MIGRAPHX_FOLDER}/src/include
+                    ${MIGRAPHX_FOLDER}/src/targets/gpu/include
+                    ${MIGRAPHX_FOLDER}/src/targets/cpu/include
+                    ${MIGRAPHX_FOLDER}/test/include
+                    ${MIGRAPHX_FOLDER}/deps_py/include)
 
-link_directories(${MIGRAPHFOLDER}/build${DEBUG}/src/onnx 
-                 ${MIGRAPHFOLDER}/build${DEBUG}/src
-                 ${MIGRAPHFOLDER}/build${DEBUG}/src/targets/gpu
-                 ${MIGRAPHFOLDER}/build${DEBUG}/src/targets/cpu
-                 ${MIGRAPHFOLDER}/deps_py/lib)
+link_directories(${MIGRAPHX_BUILD}/src/onnx 
+                 ${MIGRAPHX_BUILD}/src
+                 ${MIGRAPHX_BUILD}/src/targets/gpu
+                 ${MIGRAPHX_BUILD}/src/targets/cpu
+                 ${MIGRAPHX_DEPS})
 
 file(GLOB util_SRC "*.cpp")
 file(GLOB test_examples test_*.cpp)
