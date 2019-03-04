@@ -41,7 +41,7 @@ MIGRAPHLIBPATH = /home/scxiao/Workplace/software/migraphlibs
             
 
 
-PROGRAM_FILES=load_onnx.cpp
+PROGRAM_FILES=test_load_onnx.cpp
 SOURCE_FILES=utilities.cpp $(PROGRAM_FILES)
 
 OBJ_FILES=$(SOURCE_FILES:.cpp=.o)

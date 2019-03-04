@@ -4,12 +4,11 @@ project (Test_migraphx)
 
 
 set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
-set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build)
+set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build_debug)
 set (MIGRAPHX_DEPS ${MIGRAPHX_FOLDER}/deps_py/lib)
 #set (MIGRAPHX_LIB_PATH /home/scxiao/Workplace/software/migraphlibs)
 set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
 set (CMAKE_CXX_STANDARD 14)
-set (DEBUG _debug)
 
 add_custom_target(
     copylibs
@@ -46,5 +45,5 @@ foreach(filepath_name ${test_examples})
     add_executable(${bin_name} ${src_name})
     target_link_libraries(${bin_name} migraphx migraphx_cpu migraphx_device migraphx_gpu migraphx_onnx hip_hcc MIOpen test_util)
 #    add_dependencies(${bin_name} copylibs)
-endforeach(src_name)
+endforeach(filepath_name)
 
