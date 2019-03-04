@@ -15,21 +15,6 @@
 std::vector<std::pair<std::string, std::string>> all_sentences;
 const std::size_t max_sent_len = 10;
 
-std::pair<std::vector<int>, std::vector<int>> indices_of_sentence(
-        CLanguage& input_lang, 
-        CLanguage& output_lang,
-        const std::string &sent)
-{
-    auto pos = sent.find('\t', 0);
-    assert (pos != std::string::npos);
-    auto sent_first = sent.substr(0, pos);
-    auto sent_second = sent.substr(pos + 1);
-    auto input_indices = input_lang.get_sentence_indices(sent_first);
-    auto output_indices = output_lang.get_sentence_indices(sent_second);
-
-    return std::make_pair(input_indices, output_indices);
-}
-
 std::pair<std::string, std::string>& get_random_sentence_pair(std::vector<std::pair<std::string, std::string>> &sentences)
 {
     int index = rand() % sentences.size();
@@ -38,14 +23,10 @@ std::pair<std::string, std::string>& get_random_sentence_pair(std::vector<std::p
 
 std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::program& decoder, 
         CLanguage& input_lang, CLanguage& output_lang, 
-        const size_t hidden_size, const std::size_t max_sent_len, const std::string& sent)
+        const size_t hidden_size, const std::size_t max_sent_len, std::string& sent)
 {
-    encoder.compile(migraphx::cpu::target{});
-    decoder.compile(migraphx::cpu::target{});
-
-    auto indices_pair = indices_of_sentence(input_lang, output_lang, sent);
-    auto& input_indices = indices_pair.first;
-    auto& output_indices = indices_pair.second;
+    auto tmp = input_lang.get_sentence_indices(sent);
+    std::vector<long> input_indices(tmp.begin(), tmp.end());
 
     std::size_t input_len = input_indices.size();
     std::vector<float> encoder_hidden(hidden_size, 0.0f);
@@ -79,7 +60,7 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
     }
 
     // run the decoder
-    std::vector<int> decoder_input{SOS_token};
+    std::vector<long> decoder_input{SOS_token};
     std::vector<float> decoder_hidden(encoder_hidden);
     std::vector<std::string> decoder_words{};
 
@@ -107,6 +88,7 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
         }
 
         auto outputs_arg = decoder.eval(m);
+        std::cout << "decoder output shape = " << outputs_arg.get_shape() << std::endl;
         std::vector<float> outputs;
         outputs_arg.visit([&](auto output) { outputs.assign(output.begin(), output.end()); });
 
@@ -143,14 +125,15 @@ std::string convert_to_sentence(std::vector<std::string> vec_words)
 
 int main(int argc, char **argv)
 {
-    if (argc != 5)
-    {
-        std::cout << "Usage: " << argv[0] << " encoder.onnx decoder.onnx input_lang output_lang" << std::endl;
-        return 0;
-    }
+    //if (argc != 5)
+    //{
+    //    std::cout << "Usage: " << argv[0] << " encoder.onnx decoder.onnx input_lang output_lang" << std::endl;
+    //    return 0;
+    //}
 
-    std::string file_name("data//");
-    file_name += std::string(argv[1]) + "-" + std::string(argv[2]) + "_procd.txt";
+    std::string file_name("..//data//");
+    //file_name += std::string(argv[4]) + "-" + std::string(argv[3]) + "_procd.txt";
+    file_name += std::string("eng") + "-" + std::string("fra") + "_procd.txt";
     std::cout << "file_nam = " << file_name << std::endl;
 
     std::ifstream ifs(file_name);
@@ -171,12 +154,12 @@ int main(int argc, char **argv)
     {
         std::size_t pos = 0;
         pos = line.find('\t', pos);
-        std::cout << "line = " << line << std::endl;
-        std::string l1_sent{}, l2_sent{};
+        std::cout << "line " << line_index++ << ": " << line << std::endl;
+        std::string input_sent{}, output_sent{};
         if (pos != std::string::npos)
         {
-            l1_sent = line.substr(0, pos);
-            l2_sent = line.substr(pos + 1);
+            input_sent = line.substr(0, pos);
+            output_sent = line.substr(pos + 1);
         }
         else
         {
@@ -185,14 +168,21 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        all_sentences.push_back(std::make_pair(l1_sent, l2_sent));
-        input_lang.add_sentence(l1_sent);
-        output_lang.add_sentence(l2_sent);
+        all_sentences.push_back(std::make_pair(input_sent, output_sent));
+        input_lang.add_sentence(input_sent);
+        output_lang.add_sentence(output_sent);
     }
 
     // load the models for the encoder and decoder
-    migraphx::program encoder = load_onnx_file("s2s_encoder.onnx");
-    migraphx::program decoder = load_onnx_file("s2s_decoder.onnx");
+    migraphx::program encoder = load_onnx_file("..//model//s2s_encoder.onnx");
+    encoder.compile(migraphx::cpu::target{});
+    std::cout << "=======================================================" << std::endl;
+    migraphx::program decoder = load_onnx_file("..//model//s2s_decoder.onnx");
+    decoder.compile(migraphx::cpu::target{});
+    //migraphx::program encoder = load_onnx_file(argv[1]);
+    //migraphx::program decoder = load_onnx_file(argv[2]);
+
+
 
     int hidden_size = 256;
     int n_words_in_lan = input_lang.get_word_num();
@@ -203,6 +193,7 @@ int main(int argc, char **argv)
     int sent_num = 100;
     for (int sent_no = 0; sent_no < sent_num; ++sent_no)
     {
+        std::cout << "sent_no = " << sent_no << std::endl;
         auto sent_pair = get_random_sentence_pair(all_sentences);
         auto vec_words = evaluate_cpu(encoder, decoder, input_lang, output_lang, 
                             hidden_size, max_sent_len, sent_pair.first);

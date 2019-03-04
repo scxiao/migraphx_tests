@@ -19,6 +19,7 @@ std::vector<std::string> convert_sent_to_words(std::string &sent, char delim)
         else
         {
             words.push_back(sent.substr(start_loc));
+            break;
         }
     }
 
