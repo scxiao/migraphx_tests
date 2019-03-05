@@ -35,6 +35,7 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
     // run the encoder
     for (std::size_t i = 0; i < input_len; ++i)
     {
+        //std::cout << "encoder, word_index = " << i << std::endl;
         migraphx::program::parameter_map m;
         for (auto&& x : encoder.get_parameter_shapes())
         {
@@ -52,7 +53,9 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
             }
         }
 
+        //std::cout << "encoder, before calling encoder.eval()..." << std::endl;
         auto concat_hiddens = encoder.eval(m);
+        //std::cout << "encoder output shape = " << concat_hiddens.get_shape() << std::endl;
         // from the encoder source code, seq_size is 1, so output is the
         // same as the hidden states
         concat_hiddens.visit([&](auto output) { encoder_hidden.assign(output.begin(), output.end()); });
@@ -88,7 +91,6 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
         }
 
         auto outputs_arg = decoder.eval(m);
-        std::cout << "decoder output shape = " << outputs_arg.get_shape() << std::endl;
         std::vector<float> outputs;
         outputs_arg.visit([&](auto output) { outputs.assign(output.begin(), output.end()); });
 
@@ -98,6 +100,7 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
         // compute the words from the decoder output
         std::size_t max_index = std::distance(decoder_output.begin(), std::max_element(decoder_output.begin(),
                     decoder_output.end()));
+        std::cout << "max_index = " << max_index << std::endl;
         if (max_index == static_cast<std::size_t>(EOS_token))
         {
             break;
@@ -190,17 +193,19 @@ int main(int argc, char **argv)
 
     srand(time(nullptr));
 
-    int sent_num = 100;
+    int sent_num = 1;
     for (int sent_no = 0; sent_no < sent_num; ++sent_no)
     {
         std::cout << "sent_no = " << sent_no << std::endl;
-        auto sent_pair = get_random_sentence_pair(all_sentences);
+        //auto sent_pair = get_random_sentence_pair(all_sentences);
+        auto sent_pair = all_sentences.at(5);
         auto vec_words = evaluate_cpu(encoder, decoder, input_lang, output_lang, 
                             hidden_size, max_sent_len, sent_pair.first);
         auto output_sentence = convert_to_sentence(vec_words);
         std::cout << "Input    sentence: " << sent_pair.first << std::endl;
         std::cout << "Output   sentence: " << output_sentence << std::endl;
         std::cout << "Expected sentence: " << sent_pair.second << std::endl;
+        std::cout << std::endl;
     }
 
     return 0;

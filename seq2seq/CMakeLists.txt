@@ -5,9 +5,10 @@ set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
 #set (MIGRAPHX_BUILD  ${MIGRAPHX_FOLDER}/build_debug)
 set (MIGRAPHX_BUILD  ${MIGRAPHX_FOLDER}/build)
 set (MIGRAPHX_DEPS   ${MIGRAPHX_FOLDER}/deps_py/lib)
-set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
+#set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
 set (CMAKE_CXX_STANDARD 14)
 
+add_definitions(-DBLIBCXX_DEBUG)
 message("current folder is: " ${PROJECT_SOURCE_DIR})
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
@@ -26,6 +27,7 @@ link_directories(${MIGRAPHX_BUILD}/src/onnx
                  ${MIGRAPHX_BUILD}/src/targets/gpu
                  ${MIGRAPHX_BUILD}/src/targets/cpu
                  ${MIGRAPHX_DEPS})
+
 
 file(GLOB SRC_FILES "src/*.cpp")
 set(bin_name seq2seq_trans)
