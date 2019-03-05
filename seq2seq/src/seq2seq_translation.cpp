@@ -48,7 +48,7 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
 
     std::size_t input_len = input_indices.size();
     std::vector<float> encoder_hidden(hidden_size, 0.0f);
-    std::vector<float> encoder_outputs(hidden_size * max_sent_len, 0.0f);
+    std::vector<float> encoder_outputs{};
 
     // run the encoder
     for (std::size_t i = 0; i < input_len; ++i)
@@ -75,12 +75,15 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
         // from the encoder source code, seq_size is 1, so output is the
         // same as the hidden states
         concat_hiddens.visit([&](auto output) { encoder_hidden.assign(output.begin(), output.end()); });
-        std::cout << "i = " << i <<  ", encoder_hidden = " << std::endl;
-        print_vec(encoder_hidden);
 
         encoder_outputs.insert(encoder_outputs.end(), encoder_hidden.begin(), encoder_hidden.end());
-        std::cout << "encoder_hidden size = " << encoder_hidden.size() << std::endl;
-        std::cout << "encoder_outputs size = " << encoder_outputs.size() << std::endl;
+    }
+
+    // expected size of the encoder output is hidden_size * max_sent_len
+    if (hidden_size * max_sent_len > encoder_outputs.size())
+    {
+        std::size_t elem_num = hidden_size * max_sent_len - encoder_outputs.size();
+        encoder_outputs.insert(encoder_outputs.end(), elem_num, 0.0f);
     }
 
     // run the decoder
@@ -90,31 +93,23 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
 
     for (std::size_t i = 0; i < max_sent_len; ++i)
     {
-        std::cout << "decoder_input = ";
-        print_vec(decoder_input);
-        std::cout << "i = " << i << ", decoder_hidden_input = " << std::endl;
-        print_vec(decoder_hidden);
         migraphx::program::parameter_map m;
         for (auto&& x : decoder.get_parameter_shapes())
         {
             if (x.first == "input.1")
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::argument(x.second, decoder_input.data());
             }
             else if (x.first == "hidden")
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::argument(x.second, decoder_hidden.data());
             }
             else if (x.first == "2")
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::argument(x.second, encoder_outputs.data());
             }
             else
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::generate_argument(x.second, get_hash(x.first));
             }
         }
@@ -126,13 +121,10 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
         std::vector<float> decoder_output(outputs.begin(), outputs.begin() + output_lang.get_word_num());
         decoder_hidden.clear();
         decoder_hidden.assign(outputs.begin() + output_lang.get_word_num(), outputs.end());
-        std::cout << "i = " << i << ", decoder_hidden_output = " << std::endl;
-        print_vec(decoder_hidden);
 
         // compute the words from the decoder output
         std::size_t max_index = std::distance(decoder_output.begin(), std::max_element(decoder_output.begin(),
                     decoder_output.end()));
-        std::cout << "max_index = " << max_index << std::endl;
         if (max_index == static_cast<std::size_t>(EOS_token))
         {
             break;
@@ -156,28 +148,24 @@ std::vector<std::string> evaluate_gpu(migraphx::program& encoder, migraphx::prog
 
     std::size_t input_len = input_indices.size();
     std::vector<float> encoder_hidden(hidden_size, 0.0f);
-    std::vector<float> encoder_outputs(hidden_size * max_sent_len, 0.0f);
+    std::vector<float> encoder_outputs{};
 
     // run the encoder
     for (std::size_t i = 0; i < input_len; ++i)
     {
-        std::cout << "encoder, word_index = " << i << std::endl;
         migraphx::program::parameter_map m;
         for (auto&& x : encoder.get_parameter_shapes())
         {
             if (x.first == "input.1")
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::gpu::to_gpu(migraphx::argument(x.second, &input_indices.at(i)));
             }
             else if (x.first == "hidden")
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::gpu::to_gpu(migraphx::argument(x.second, encoder_hidden.data()));
             }
             else
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::gpu::to_gpu(migraphx::generate_argument(x.second, get_hash(x.first)));
             }
         }
@@ -186,13 +174,17 @@ std::vector<std::string> evaluate_gpu(migraphx::program& encoder, migraphx::prog
         // from the encoder source code, seq_size is 1, so output is the
         // same as the hidden states
         concat_hiddens.visit([&](auto output) { encoder_hidden.assign(output.begin(), output.end()); });
-        std::cout << "i = " << i <<  ", encoder_hidden = " << std::endl;
-        print_vec(encoder_hidden);
 
         encoder_outputs.insert(encoder_outputs.end(), encoder_hidden.begin(), encoder_hidden.end());
-        std::cout << "encoder_hidden size = " << encoder_hidden.size() << std::endl;
-        std::cout << "encoder_outputs size = " << encoder_outputs.size() << std::endl;
     }
+
+    // expected size of the encoder output is hidden_size * max_sent_len
+    if (hidden_size * max_sent_len > encoder_outputs.size())
+    {
+        std::size_t elem_num = hidden_size * max_sent_len - encoder_outputs.size();
+        encoder_outputs.insert(encoder_outputs.end(), elem_num, 0.0f);
+    }
+
 
     // run the decoder
     std::vector<long> decoder_input{SOS_token};
@@ -201,32 +193,23 @@ std::vector<std::string> evaluate_gpu(migraphx::program& encoder, migraphx::prog
 
     for (std::size_t i = 0; i < max_sent_len; ++i)
     {
-        std::cout << "decoder_input = ";
-        print_vec(decoder_input);
-        std::cout << "i = " << i << ", decoder_hidden_input = " << std::endl;
-        print_vec(decoder_hidden);
         migraphx::program::parameter_map m;
         for (auto&& x : decoder.get_parameter_shapes())
         {
             if (x.first == "input.1")
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::gpu::to_gpu(migraphx::argument(x.second, decoder_input.data()));
             }
             else if (x.first == "hidden")
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::gpu::to_gpu(migraphx::argument(x.second, decoder_hidden.data()));
             }
             else if (x.first == "2")
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
-                std::cout << "encoder_output_size = " << encoder_outputs.size() << std::endl;
                 m[x.first] = migraphx::gpu::to_gpu(migraphx::argument(x.second, encoder_outputs.data()));
             }
             else
             {
-                std::cout << x.first << " shape = " << x.second << std::endl;
                 m[x.first] = migraphx::gpu::to_gpu(migraphx::generate_argument(x.second, get_hash(x.first)));
             }
         }
@@ -238,13 +221,10 @@ std::vector<std::string> evaluate_gpu(migraphx::program& encoder, migraphx::prog
         std::vector<float> decoder_output(outputs.begin(), outputs.begin() + output_lang.get_word_num());
         decoder_hidden.clear();
         decoder_hidden.assign(outputs.begin() + output_lang.get_word_num(), outputs.end());
-        std::cout << "i = " << i << ", decoder_hidden_output = " << std::endl;
-        print_vec(decoder_hidden);
 
         // compute the words from the decoder output
         std::size_t max_index = std::distance(decoder_output.begin(), std::max_element(decoder_output.begin(),
                     decoder_output.end()));
-        std::cout << "max_index = " << max_index << std::endl;
         if (max_index == static_cast<std::size_t>(EOS_token))
         {
             break;
@@ -277,11 +257,11 @@ std::string convert_to_sentence(std::vector<std::string> vec_words)
 
 int main(int argc, char **argv)
 {
-    //if (argc != 5)
-    //{
-    //    std::cout << "Usage: " << argv[0] << " encoder.onnx decoder.onnx input_lang output_lang" << std::endl;
-    //    return 0;
-    //}
+    if (argc != 6)
+    {
+        std::cout << "Usage: " << argv[0] << " encoder.onnx decoder.onnx input_lang output_lang gpu/cpu" << std::endl;
+        return 0;
+    }
 
     std::string file_name("..//data//");
     //file_name += std::string(argv[4]) + "-" + std::string(argv[3]) + "_procd.txt";
@@ -295,6 +275,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    std::string use_gpu(argv[5]);
+    bool b_use_gpu = false;
+    if (use_gpu == "gpu")
+    {
+        b_use_gpu = true;
+    }
+
     // two language objects: one is for lang1, 
     // the other is for lang2
     CLanguage input_lang(argv[3]);
@@ -306,7 +293,7 @@ int main(int argc, char **argv)
     {
         std::size_t pos = 0;
         pos = line.find('\t', pos);
-        std::cout << "line " << line_index++ << ": " << line << std::endl;
+        //std::cout << "line " << line_index++ << ": " << line << std::endl;
         std::string input_sent{}, output_sent{};
         if (pos != std::string::npos)
         {
@@ -326,13 +313,20 @@ int main(int argc, char **argv)
     }
 
     // load the models for the encoder and decoder
-    migraphx::program encoder = load_onnx_file("..//model//s2s_encoder.onnx");
-    encoder.compile(migraphx::gpu::target{});
-    std::cout << "=======================================================" << std::endl;
-    migraphx::program decoder = load_onnx_file("..//model//s2s_decoder.onnx");
-    decoder.compile(migraphx::gpu::target{});
-    //migraphx::program encoder = load_onnx_file(argv[1]);
-    //migraphx::program decoder = load_onnx_file(argv[2]);
+    //migraphx::program encoder = load_onnx_file("..//model//s2s_encoder.onnx");
+    //migraphx::program decoder = load_onnx_file("..//model//s2s_decoder.onnx");
+    migraphx::program encoder = load_onnx_file(argv[1]);
+    migraphx::program decoder = load_onnx_file(argv[2]);
+    if (b_use_gpu)
+    {
+        encoder.compile(migraphx::gpu::target{});
+        decoder.compile(migraphx::gpu::target{});
+    }
+    else
+    {
+        encoder.compile(migraphx::cpu::target{});
+        decoder.compile(migraphx::cpu::target{});
+    }
 
     int hidden_size = 256;
     int n_words_in_lan = input_lang.get_word_num();
@@ -340,14 +334,23 @@ int main(int argc, char **argv)
 
     srand(time(nullptr));
 
-    int sent_num = 1;
+    int sent_num = 10;
     for (int sent_no = 0; sent_no < sent_num; ++sent_no)
     {
         std::cout << "sent_no = " << sent_no << std::endl;
         //auto sent_pair = get_random_sentence_pair(all_sentences);
-        auto sent_pair = all_sentences.at(5);
-        auto vec_words = evaluate_gpu(encoder, decoder, input_lang, output_lang, 
+        auto sent_pair = all_sentences.at(sent_no * 10);
+        std::vector<std::string> vec_words{};
+        if (b_use_gpu)
+        {
+            vec_words = evaluate_gpu(encoder, decoder, input_lang, output_lang, 
                             hidden_size, max_sent_len, sent_pair.first);
+        }
+        else
+        {
+            vec_words = evaluate_cpu(encoder, decoder, input_lang, output_lang, 
+                            hidden_size, max_sent_len, sent_pair.first);
+        }
         auto output_sentence = convert_to_sentence(vec_words);
         std::cout << "Input    sentence: " << sent_pair.first << std::endl;
         std::cout << "Output   sentence: " << output_sentence << std::endl;
