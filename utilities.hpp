@@ -28,6 +28,12 @@ void print_res(const T& res)
     }
 }
 
+template <class T>
+auto get_hash(const T& x)
+{
+    return std::hash<T>{}(x);
+}
+
 void run_cpu(migraphx::program &p, std::vector<float> &resData);
 
 void run_gpu(migraphx::program &p, std::vector<float> &resData);

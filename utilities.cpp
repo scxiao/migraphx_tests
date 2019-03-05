@@ -1,11 +1,5 @@
 #include "utilities.hpp"
 
-template <class T>
-auto get_hash(const T& x)
-{
-    return std::hash<T>{}(x);
-}
-
 void run_cpu(migraphx::program &p, std::vector<float> &resData)
 {
     p.compile(migraphx::cpu::target{});
