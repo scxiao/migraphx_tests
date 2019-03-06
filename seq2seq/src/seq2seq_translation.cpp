@@ -227,6 +227,7 @@ std::vector<std::string> evaluate_gpu(migraphx::program& encoder, migraphx::prog
                     decoder_output.end()));
         if (max_index == static_cast<std::size_t>(EOS_token))
         {
+            decoder_words.push_back("<EOS>");
             break;
         }
         else
@@ -238,10 +239,6 @@ std::vector<std::string> evaluate_gpu(migraphx::program& encoder, migraphx::prog
 
     return decoder_words;
 }
-
-
-
-
 
 std::string convert_to_sentence(std::vector<std::string> vec_words)
 {
@@ -334,7 +331,7 @@ int main(int argc, char **argv)
 
     srand(time(nullptr));
 
-    int sent_num = 10;
+    int sent_num = 50;
     for (int sent_no = 0; sent_no < sent_num; ++sent_no)
     {
         std::cout << "sent_no = " << sent_no << std::endl;
@@ -352,9 +349,9 @@ int main(int argc, char **argv)
                             hidden_size, max_sent_len, sent_pair.first);
         }
         auto output_sentence = convert_to_sentence(vec_words);
-        std::cout << "Input    sentence: " << sent_pair.first << std::endl;
-        std::cout << "Output   sentence: " << output_sentence << std::endl;
-        std::cout << "Expected sentence: " << sent_pair.second << std::endl;
+        std::cout << "> " << sent_pair.first << std::endl;
+        std::cout << "= " << sent_pair.second << std::endl;
+        std::cout << "< " << output_sentence << std::endl;
         std::cout << std::endl;
     }
 
