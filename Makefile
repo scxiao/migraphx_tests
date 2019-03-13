@@ -9,10 +9,10 @@ MIGRAPHINCLUDE= -I$(MIGRAPHFOLDER)/src/include \
                 -I.
 
 CXX=/opt/rocm/bin/hcc
-DEBUG=_debug
+DEBUG=
 #DEBUG=_f46c700
-MIGRAPHLIBDIR = -L $(MIGRAPHFOLDER)/build$(DEBUG)/src/onnx \
-                -L $(MIGRAPHFOLDER)/build$(DEBUG)/src \
+MIGRAPHLIBDIR = -L$(MIGRAPHFOLDER)/build$(DEBUG)/src/onnx \
+                -L$(MIGRAPHFOLDER)/build$(DEBUG)/src \
                 -L$(MIGRAPHFOLDER)/build$(DEBUG)/src/targets/gpu \
                 -L$(MIGRAPHFOLDER)/build$(DEBUG)/src/targets/cpu \
                 -L$(MIGRAPHFOLDER)/deps_py/lib
