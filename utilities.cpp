@@ -1,3 +1,4 @@
+
 #include "utilities.hpp"
 
 void run_cpu(migraphx::program &p, std::vector<float> &resData)
@@ -26,6 +27,7 @@ void run_gpu(migraphx::program &p, std::vector<float> &resData)
     migraphx::program::parameter_map m;
     for (auto &&x : p.get_parameter_shapes())
     {
+        std::cout << "gpu input: " << x.first << "\'shape = " << x.second << std::endl;
         auto&& argu = migraphx::generate_argument(x.second, get_hash(x.first));
         m[x.first] = migraphx::gpu::to_gpu(argu);
     }

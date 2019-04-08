@@ -14,6 +14,9 @@
 #include <migraphx/gpu/target.hpp>
 #include <migraphx/gpu/hip.hpp>
 #include <migraphx/generate.hpp>
+#include <chrono>
+
+using namespace std::chrono;
 
 std::vector<std::pair<std::string, std::string>> all_sentences;
 const std::size_t max_sent_len = 10;
@@ -331,10 +334,12 @@ int main(int argc, char **argv)
 
     srand(time(nullptr));
 
-    int sent_num = 50;
+    int sent_num = 500;
+    // get start time
+    high_resolution_clock::time_point t1 = high_resolution_clock::now();
     for (int sent_no = 0; sent_no < sent_num; ++sent_no)
     {
-        std::cout << "sent_no = " << sent_no << std::endl;
+        //std::cout << "sent_no = " << sent_no << std::endl;
         //auto sent_pair = get_random_sentence_pair(all_sentences);
         auto sent_pair = all_sentences.at(sent_no * 10);
         std::vector<std::string> vec_words{};
@@ -349,11 +354,15 @@ int main(int argc, char **argv)
                             hidden_size, max_sent_len, sent_pair.first);
         }
         auto output_sentence = convert_to_sentence(vec_words);
-        std::cout << "> " << sent_pair.first << std::endl;
-        std::cout << "= " << sent_pair.second << std::endl;
-        std::cout << "< " << output_sentence << std::endl;
-        std::cout << std::endl;
+        //std::cout << "> " << sent_pair.first << std::endl;
+        //std::cout << "= " << sent_pair.second << std::endl;
+        //std::cout << "< " << output_sentence << std::endl;
+        //std::cout << std::endl;
     }
+    high_resolution_clock::time_point t2 = high_resolution_clock::now();
+    
+    milliseconds ms = duration_cast<milliseconds>(t2 - t1);
+    std::cout << "It takes " << ms.count() << " ms to translate " << sent_num << " sentences!" << std::endl;
 
     return 0;
 }

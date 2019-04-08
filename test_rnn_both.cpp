@@ -6,6 +6,7 @@
 #include <migraphx/operators.hpp>
 #include <migraphx/generate.hpp>
 #include <migraphx/program.hpp>
+#include <migraphx/quantization.hpp>
 #include <migraphx/cpu/target.hpp>
 #include <migraphx/gpu/target.hpp>
 #include <migraphx/gpu/hip.hpp>
@@ -51,6 +52,7 @@ void print_res(std::vector<T> &res, std::size_t nd, std::size_t batch_size, std:
 
 void run_cpu(migraphx::program &p, std::vector<float> &res)
 {
+    migraphx::quantize(p);
     p.compile(migraphx::cpu::target{});
 
     migraphx::program::parameter_map m;
@@ -97,6 +99,7 @@ void run_cpu(migraphx::program &p, std::vector<float> &res)
 
 void run_gpu(migraphx::program &p, std::vector<float> &res)
 {
+    migraphx::quantize(p);
     p.compile(migraphx::gpu::target{});
 
     migraphx::program::parameter_map m;

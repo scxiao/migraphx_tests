@@ -7,7 +7,6 @@ set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
 #set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build_debug)
 set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build)
 set (MIGRAPHX_DEPS ${MIGRAPHX_FOLDER}/deps_py/lib)
-#set (MIGRAPHX_LIB_PATH /home/scxiao/Workplace/software/migraphlibs)
 set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
 set (CMAKE_CXX_STANDARD 14)
 

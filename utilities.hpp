@@ -28,6 +28,18 @@ void print_res(const T& res)
     }
 }
 
+//template<typename T>
+//void print_res(const T& res)
+//{
+//    for (std::size_t i = 0; i < res.size(); ++i)
+//    {
+//        std::cout << res[i] << ", ";
+//        if ((i + 1) % 6 == 0) {
+//            std::cout << std::endl;
+//        }
+//    }
+//}
+
 template <class T>
 auto get_hash(const T& x)
 {

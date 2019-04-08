@@ -9,7 +9,7 @@ MIGRAPHINCLUDE= -I$(MIGRAPHFOLDER)/src/include \
                 -I.
 
 CXX=/opt/rocm/bin/hcc
-DEBUG=
+#DEBUG=_debug
 #DEBUG=_f46c700
 MIGRAPHLIBDIR = -L$(MIGRAPHFOLDER)/build$(DEBUG)/src/onnx \
                 -L$(MIGRAPHFOLDER)/build$(DEBUG)/src \
@@ -41,7 +41,8 @@ MIGRAPHLIBPATH = /home/scxiao/Workplace/software/migraphlibs
             
 
 
-PROGRAM_FILES=test_load_onnx.cpp
+PROGRAM_FILES=test_dot.cpp
+#PROGRAM_FILES=test_load_onnx.cpp
 SOURCE_FILES=utilities.cpp $(PROGRAM_FILES)
 
 OBJ_FILES=$(SOURCE_FILES:.cpp=.o)
