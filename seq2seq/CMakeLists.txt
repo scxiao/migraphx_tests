@@ -4,7 +4,7 @@ project (Seq2seq_Translation)
 set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
 #set (MIGRAPHX_BUILD  ${MIGRAPHX_FOLDER}/build_debug)
 set (MIGRAPHX_BUILD  ${MIGRAPHX_FOLDER}/build)
-set (MIGRAPHX_DEPS   ${MIGRAPHX_FOLDER}/deps_py/lib)
+set (MIGRAPHX_DEPS   ${MIGRAPHX_FOLDER}/deps_mo1.8/lib)
 set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
 set (CMAKE_CXX_STANDARD 14)
 
@@ -19,7 +19,7 @@ include_directories(${MIGRAPHX_FOLDER}/src/include
                     ${MIGRAPHX_FOLDER}/src/targets/gpu/include
                     ${MIGRAPHX_FOLDER}/src/targets/cpu/include
                     ${MIGRAPHX_FOLDER}/test/include
-                    ${MIGRAPHX_FOLDER}/deps_py/include
+                    ${MIGRAPHX_FOLDER}/deps_mo1.8/include
                     inc)
 
 link_directories(${MIGRAPHX_BUILD}/src/onnx 

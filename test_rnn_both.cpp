@@ -6,12 +6,51 @@
 #include <migraphx/operators.hpp>
 #include <migraphx/generate.hpp>
 #include <migraphx/program.hpp>
-#include <migraphx/quantization.hpp>
-#include <migraphx/cpu/target.hpp>
-#include <migraphx/gpu/target.hpp>
 #include <migraphx/gpu/hip.hpp>
 #include <migraphx/instruction.hpp>
 #include <migraphx/onnx.hpp>
+#include "utilities.hpp"
+
+migraphx::program create_program()
+{
+    std::size_t batch_size  = 2;
+    std::size_t seq_len     = 3;
+    std::size_t hidden_size = 5;
+    std::size_t input_size  = 8;
+    std::size_t num_dirct   = 1;
+    float clip              = 0.0f;
+
+    migraphx::program p;
+    migraphx::shape in_shape{migraphx::shape::float_type, {seq_len, batch_size, input_size}};
+    migraphx::shape w_shape{migraphx::shape::float_type,
+                            {num_dirct, 3 * hidden_size, input_size}};
+    migraphx::shape r_shape{migraphx::shape::float_type,
+                            {num_dirct, 3 * hidden_size, hidden_size}};
+    migraphx::shape b_shape{migraphx::shape::float_type, {num_dirct, 6 * hidden_size}};
+    migraphx::shape ih_shape{migraphx::shape::float_type, {num_dirct, batch_size, hidden_size}};
+
+    auto seq  = p.add_parameter("seq", in_shape);
+    auto w    = p.add_parameter("w", w_shape);
+    auto r    = p.add_parameter("r", r_shape);
+    auto bias = p.add_parameter("bias", b_shape);
+    auto ih   = p.add_parameter("ih", ih_shape);
+    auto und  = p.add_instruction(migraphx::op::undefined{});
+
+    auto output =
+        p.add_instruction(migraphx::op::gru{hidden_size,
+                                            {migraphx::op::sigmoid{}, migraphx::op::tanh{}},
+                                            migraphx::op::rnn_direction::forward,
+                                            clip},
+                          seq,
+                          w,
+                          r,
+                          bias,
+                          und,
+                          ih);
+    p.add_instruction(migraphx::op::rnn_last_output{}, output);
+
+    return p;
+}
 
 migraphx::program load_onnx_file(std::string file_name) {
     auto prog = migraphx::parse_onnx(file_name);
@@ -22,157 +61,55 @@ migraphx::program load_onnx_file(std::string file_name) {
     return prog;
 }
 
-template<typename T>
-void print_res(std::vector<T> &res, std::size_t nd, std::size_t batch_size, std::size_t hidden_size) {
-    std::cout << "output size = " << res.size() << std::endl;
-    for (size_t i = 0; i < res.size(); i++) {
-        std::cout << std::setw(12) << res.at(i) <<",";
-
-        if (hidden_size > 5) {
-            if ((i + 1) % 5 == 0) {
-                std::cout << std::endl;
-            }
-        }
-        if ((i + 1) % hidden_size == 0) {
-            std::cout << std::endl;
-        }
-
-
-        if (nd == 2) {
-            if ((i + 1) % (batch_size * hidden_size * nd) == 0) {
-                std::cout << std::endl;
-            }
-        }
-        if ((i + 1) % (batch_size * hidden_size) == 0) {
-            std::cout << std::endl;
-        }
-    }
-}
-
-
-void run_cpu(migraphx::program &p, std::vector<float> &res)
+migraphx::program rnn_forward10()
 {
-    migraphx::quantize(p);
-    p.compile(migraphx::cpu::target{});
+    std::size_t batch_size  = 2;
+    std::size_t seq_len     = 10;
+    std::size_t hidden_size = 4;
+    std::size_t input_size  = 3;
+    std::size_t num_dirct   = 1;
+    float clip              = 0.0f;
 
-    migraphx::program::parameter_map m;
-    std::vector<std::vector<float>> data(p.get_parameter_shapes().size());
-    int index = 0;
-    std::size_t batch_size, hidden_size, nd;
-    batch_size = hidden_size = nd = 1;
-    for (auto &&x : p.get_parameter_shapes())
-    {
-        std::cout << x.first << "'s shape = " << x.second << std::endl;
-        if (x.first == std::string("input")) {
-            data[index].resize(x.second.elements(), 0.0);
-            data[index][0] = data[index][1] = 1.0f;
-        }
-        else {
-            data[index].resize(x.second.elements(), 1.0);
-            if (x.first == "1") {
-                auto lens = x.second.lens();
-                batch_size = lens[1];
-                hidden_size = lens[2];
-                nd = lens[0];
-            }
-        }
-        auto &&argu = migraphx::argument(x.second, data[index++].data());
-        m[x.first] = argu;
-    }
+    migraphx::program p;
+    migraphx::shape in_shape{migraphx::shape::float_type, {seq_len, batch_size, input_size}};
+    migraphx::shape w_shape{migraphx::shape::float_type, {num_dirct, hidden_size, input_size}};
+    migraphx::shape r_shape{migraphx::shape::float_type, {num_dirct, hidden_size, hidden_size}};
+    migraphx::shape b_shape{migraphx::shape::float_type, {num_dirct, 2 * hidden_size}};
+    migraphx::shape ih_shape{migraphx::shape::float_type, {num_dirct, batch_size, hidden_size}};
 
-    std::cout << "nd = " << nd << ", batch_size = " << batch_size << ", hidden_size = " << hidden_size << std::endl;
-    if (batch_size == 1) {
-        batch_size = 3;
-    }
-    if (hidden_size == 1)
-    {
-        hidden_size = 5;
-    }
+    auto seq  = p.add_parameter("seq", in_shape);
+    auto w    = p.add_parameter("w", w_shape);
+    auto r    = p.add_parameter("r", r_shape);
+    auto bias = p.add_parameter("bias", b_shape);
+    auto ih   = p.add_parameter("ih", ih_shape);
+    auto und  = p.add_instruction(migraphx::op::undefined{});
 
-    auto result = p.eval(m);
-    result.visit([&](auto output) { res.assign(output.begin(), output.end()); });
+    auto output =
+        p.add_instruction(migraphx::op::rnn{hidden_size,
+                                            {migraphx::op::tanh{}, migraphx::op::tanh{}},
+                                            migraphx::op::rnn_direction::forward,
+                                            clip},
+                          seq,
+                          w,
+                          r,
+                          bias,
+                          und,
+                          ih);
+    p.add_instruction(migraphx::op::rnn_last_output{}, output);
 
-    std::cout << "cpu res = " << std::endl;
-    print_res(res, nd, batch_size, hidden_size);
-    std::cout << std::endl;
+    return p;
 }
-
-void run_gpu(migraphx::program &p, std::vector<float> &res)
-{
-    migraphx::quantize(p);
-    p.compile(migraphx::gpu::target{});
-
-    migraphx::program::parameter_map m;
-    std::vector<std::vector<float>> data(p.get_parameter_shapes().size());
-    int index = 0;
-    std::size_t batch_size, hidden_size, nd;
-    batch_size = hidden_size = nd = 1;
-    for (auto &&x : p.get_parameter_shapes())
-    {
-        std::cout << x.first << "'s shape = " << x.second << std::endl;
-        if (x.first == std::string("input")) {
-            data[index].resize(x.second.elements(), 0.0);
-            data[index][0] = data[index][1] = 1.0f;
-        }
-        else {
-            data[index].resize(x.second.elements(), 1.0f);
-            if (x.first == "1") {
-                auto lens = x.second.lens();
-                batch_size = lens[1];
-                hidden_size = lens[2];
-                nd = lens[0];
-            }
-        }
-
-        auto&& argu = migraphx::argument(x.second, data[index++].data());
-        m[x.first] = migraphx::gpu::to_gpu(argu);
-    }
-    auto result = migraphx::gpu::from_gpu(p.eval(m));
-    result.visit([&](auto output) { res.assign(output.begin(), output.end()); });
-
-    std::cout << "nd = " << nd << ", batch_size = " << batch_size << ", hidden_size = " << hidden_size << std::endl;
-    if (batch_size == 1) {
-        batch_size = 3;
-    }
-    if (hidden_size == 1)
-    {
-        hidden_size = 5;
-    }
-
-    std::cout << "gpu res = " << std::endl;
-    print_res(res, nd, batch_size, hidden_size);
-    std::cout << std::endl;
-}
-
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
-        std::cout << "Usage: " << argv[0] << " onnx_file gpu/cpu" << std::endl;
-        return 0;
-    }
 
     std::vector<float> cpu_res, gpu_res;
-    migraphx::program prog2 = load_onnx_file(argv[1]);
-    run_gpu(prog2, gpu_res);
-    migraphx::program prog1 = load_onnx_file(argv[1]);
-    run_cpu(prog1, cpu_res);
+	auto prog = rnn_forward10();
+	
+    run_cpu(prog, cpu_res);
+    run_gpu(prog, gpu_res);
 
-    std::size_t cpu_size = cpu_res.size();
-    std::size_t gpu_size = gpu_res.size();
-    if (cpu_size != gpu_size) {
-        std::cout << "output size mistach!!!!!!!!!!!!!!!!" << std::endl;
-    }
-
-    bool passed = true;
-    for (std::size_t i = 0; i < cpu_size; i++) {
-        if (fabs(cpu_res[i] - gpu_res[i]) > 1.0e-6)
-        {
-            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
-                gpu_res[i] << ")!!!!!!" << std::endl;
-            passed = false;
-        }
-    }
-    std::cout << (passed ? "PASSED!!!" : "FAILED!!!") << std::endl;
+    bool ret2 = compare_results(cpu_res, gpu_res);
+    std::cout << (ret2 ? "PASSED!" : "FAILED") << std::endl;
 
     return 0;
 }

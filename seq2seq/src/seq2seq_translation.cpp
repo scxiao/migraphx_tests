@@ -79,6 +79,13 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
         // same as the hidden states
         concat_hiddens.visit([&](auto output) { encoder_hidden.assign(output.begin(), output.end()); });
 
+//        std::cout << "encoder_hidden = ";
+//        for (size_t i = 0; i < 10; i++)
+//        {
+//            std::cout << encoder_hidden[i] << "\t";
+//        }
+//        std::cout << std::endl;
+
         encoder_outputs.insert(encoder_outputs.end(), encoder_hidden.begin(), encoder_hidden.end());
     }
 
@@ -120,6 +127,12 @@ std::vector<std::string> evaluate_cpu(migraphx::program& encoder, migraphx::prog
         auto outputs_arg = decoder.eval(m);
         std::vector<float> outputs;
         outputs_arg.visit([&](auto output) { outputs.assign(output.begin(), output.end()); });
+//        std::cout << "outputs = ";
+//        for (size_t i = 0; i < 10; i++)
+//        {
+//            std::cout << outputs[i] << "\t";
+//        }
+//        std::cout << std::endl;
 
         std::vector<float> decoder_output(outputs.begin(), outputs.begin() + output_lang.get_word_num());
         decoder_hidden.clear();
@@ -230,7 +243,7 @@ std::vector<std::string> evaluate_gpu(migraphx::program& encoder, migraphx::prog
                     decoder_output.end()));
         if (max_index == static_cast<std::size_t>(EOS_token))
         {
-            decoder_words.push_back("<EOS>");
+            //decoder_words.push_back("<EOS>");
             break;
         }
         else
@@ -250,6 +263,7 @@ std::string convert_to_sentence(std::vector<std::string> vec_words)
         ret_sent.append(word);
         ret_sent.append(1, ' ');
     });
+    ret_sent.pop_back();
 
     return ret_sent;
 }
@@ -339,7 +353,7 @@ int main(int argc, char **argv)
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
     for (int sent_no = 0; sent_no < sent_num; ++sent_no)
     {
-        //std::cout << "sent_no = " << sent_no << std::endl;
+        std::cout << "sent_no = " << sent_no << std::endl;
         //auto sent_pair = get_random_sentence_pair(all_sentences);
         auto sent_pair = all_sentences.at(sent_no * 10);
         std::vector<std::string> vec_words{};
@@ -354,10 +368,10 @@ int main(int argc, char **argv)
                             hidden_size, max_sent_len, sent_pair.first);
         }
         auto output_sentence = convert_to_sentence(vec_words);
-        //std::cout << "> " << sent_pair.first << std::endl;
-        //std::cout << "= " << sent_pair.second << std::endl;
-        //std::cout << "< " << output_sentence << std::endl;
-        //std::cout << std::endl;
+        std::cout << "> " << sent_pair.first << std::endl;
+        std::cout << "= " << sent_pair.second << std::endl;
+        std::cout << "< " << output_sentence << std::endl;
+        std::cout << std::endl;
     }
     high_resolution_clock::time_point t2 = high_resolution_clock::now();
     

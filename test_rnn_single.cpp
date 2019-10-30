@@ -11,7 +11,7 @@
 #include <migraphx/instruction.hpp>
 #include <migraphx/onnx.hpp>
 #include <migraphx/program.hpp>
-#include <migraphx/quantization.hpp>
+//#include <migraphx/quantization.hpp>
 
 migraphx::program load_onnx_file(std::string file_name) {
     auto prog = migraphx::parse_onnx(file_name);
@@ -39,13 +39,13 @@ int main(int argc, char **argv) {
     if (b_use_gpu) 
     {
         std::cout << "gpu is used." << std::endl;
-        migraphx::quantize(prog);
+        //migraphx::quantize(prog);
         prog.compile(migraphx::gpu::target{});
     }
     else 
     {
         std::cout << "cpu is used." << std::endl;
-        migraphx::quantize(prog);
+        //migraphx::quantize(prog);
         prog.compile(migraphx::cpu::target{});
     }
 

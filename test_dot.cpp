@@ -668,46 +668,136 @@ migraphx::program create_program_gemm_3args1(float alpha = 1.0f, float beta = 1.
     return p;
 }
 
+migraphx::program create_relu_program()
+{
+    migraphx::program p;
+    std::size_t axis = 0;
+    migraphx::shape s0{migraphx::shape::float_type, {2, 2}};
+    migraphx::shape s1{migraphx::shape::float_type, {3, 2}};
+    migraphx::shape s2{migraphx::shape::float_type, {1, 2}};
+    auto l0 = p.add_parameter("x", s0);
+    auto l1 = p.add_parameter("y", s1);
+    auto l2 = p.add_parameter("z", s2);
+    auto r0 = p.add_instruction(migraphx::op::relu{}, l0);
+    auto r1 = p.add_instruction(migraphx::op::relu{}, l1);
+    auto r2 = p.add_instruction(migraphx::op::relu{}, l2);
+    auto c0 = p.add_instruction(migraphx::op::concat{axis}, r0, r1, r2);
+    p.add_instruction(migraphx::op::relu{}, c0);
+    return p;
+}
 
-//int main()
-//{
-//    auto p1 = create_program_mm_c33();
-//    std::vector<float> cpu_res, gpu_res;
-//    run_cpu(p1, cpu_res);
-//}
+migraphx::program create_lstm_program() 
+{
+    std::size_t batch_size  = 2;
+    std::size_t seq_len     = 3;
+    std::size_t hidden_size = 5;
+    std::size_t input_size  = 8;
+    std::size_t num_dirct   = 1;
+    float clip              = 0.0f;
+
+    migraphx::program p;
+    migraphx::shape in_shape{migraphx::shape::float_type, {seq_len, batch_size, input_size}};
+    migraphx::shape w_shape{migraphx::shape::float_type,
+                            {num_dirct, 4 * hidden_size, input_size}};
+    migraphx::shape r_shape{migraphx::shape::float_type,
+                            {num_dirct, 4 * hidden_size, hidden_size}};
+    migraphx::shape b_shape{migraphx::shape::float_type, {num_dirct, 8 * hidden_size}};
+    migraphx::shape ih_shape{migraphx::shape::float_type, {num_dirct, batch_size, hidden_size}};
+    migraphx::shape ic_shape{migraphx::shape::float_type, {num_dirct, batch_size, hidden_size}};
+    migraphx::shape pph_shape{migraphx::shape::float_type, {num_dirct, 3 * hidden_size}};
+
+    auto seq  = p.add_parameter("seq", in_shape);
+    auto w    = p.add_parameter("w", w_shape);
+    auto r    = p.add_parameter("r", r_shape);
+    auto bias = p.add_parameter("bias", b_shape);
+    auto ih   = p.add_parameter("ih", ih_shape);
+    auto ic   = p.add_parameter("ic", ic_shape);
+    auto pph  = p.add_parameter("pph", pph_shape);
+    auto und  = p.add_instruction(migraphx::op::undefined{});
+
+    p.add_instruction(
+        migraphx::op::lstm{
+            hidden_size,
+            {migraphx::op::sigmoid{}, migraphx::op::tanh{}, migraphx::op::tanh{}},
+            migraphx::op::rnn_direction::forward,
+            clip},
+        seq,
+        w,
+        r,
+        bias,
+        und,
+        ih,
+        ic,
+        pph);
+
+    return p;
+}
+
+migraphx::program create_relu_lrn_program()
+{
+    migraphx::program p;
+    auto x = p.add_parameter("x", migraphx::shape{migraphx::shape::float_type, {1, 5, 2, 2}});
+    auto ty = p.add_instruction(migraphx::op::transpose{{0, 2, 3, 1}}, x);
+    auto l = p.add_instruction(migraphx::op::tanh{}, ty);
+    p.add_instruction(migraphx::op::add{}, l, l);
+    return p;
+}
+
+migraphx::program create_tanh_program() 
+{
+    migraphx::program p;
+    migraphx::shape s{migraphx::shape::float_type, {4, 3}};
+    std::vector<float> data(4 * 3);
+    std::iota(data.begin(), data.end(), 0.0f);
+    //auto x = p.add_parameter("x", migraphx::shape{migraphx::shape::float_type, {4, 3}});
+    auto x = p.add_literal(migraphx::literal(s, data));
+    auto tx = p.add_instruction(migraphx::op::transpose{{1, 0}}, x);
+    auto tanhx = p.add_instruction(migraphx::op::sin{}, tx);
+    //p.add_instruction(migraphx::op::add{}, tanhx, tanhx);
+    return p;
+}
+
+migraphx::program create_program_ladd()
+{
+    migraphx::program p;
+    migraphx::shape s{migraphx::shape::float_type, {2, 3}};
+    std::vector<float> data(2 * 3);
+    std::iota(data.begin(), data.end(), 1.0f);
+    auto l1 = p.add_literal(migraphx::literal(s, data));
+    auto l2 = p.add_literal(migraphx::literal(s, data));
+    p.add_instruction(migraphx::op::add{}, l1, l2);
+    //migraphx::quantize(p, {"all"});
+    return p;
+};
+
+migraphx::program create_lrn_program()
+{
+    migraphx::program p;
+    auto x = p.add_parameter("x", migraphx::shape{migraphx::shape::float_type, {1, 5, 2, 2}});
+    auto y = p.add_instruction(migraphx::op::relu{}, x);
+    p.add_instruction(migraphx::op::lrn{0.0001, 0.75, 2.0, 5}, y);
+    return p;
+}
+
 
 int main()
 {
-    auto p1 = create_program_vv1(1.0f);
-    std::vector<float> cpu_res, gpu_res;
-    run_gpu(p1, gpu_res);
-//    auto p2 = create_program_vv2();
-//    run_gpu(p2, gpu_res);
-//
-//    bool b_res = compare_results(cpu_res, gpu_res);
-//    std::cout << (b_res ? "PASSED!" : "FAILED") << std::endl;
-//	std::vector<float> c = {
-//         -1.61174961,  3.1184949 , -0.70320532,
-//          0.33163486, -0.00946921,  0.64562563,
-//          0.83406936,  1.0640925 ,  0.8810371 ,
-//          0.22762839, -0.20030816, -1.7183587 ,
-//          0.15625511,  0.47722176,  0.57136345,
-//         -1.04542994,  1.4052398 ,  1.24200828,
-//         -2.95082864,  1.19352506,  1.50079767,
-//          0.6369869 ,  0.14825607, -0.02316313,
-//         -1.15079307,  1.42139266,  1.80996299,
-//          1.79258908,  2.7191957 ,  0.33190252,
-//         -0.72656511,  0.09633514, -0.71055763,
-//          0.25942354, -0.34234491, -1.80521991,
-//         -0.58047592,  0.27736847, -3.95582287,
-//          0.61482271, -0.41510652,  0.30513831,
-//          0.43599308, -0.10708952, -0.76788462,
-//         -4.00837011,  1.09920527, -2.02128982,
-//          0.10971727,  0.61842213,  0.43834176,
-//          0.29601959,  2.00927759,  0.42087109};
-//    b_res = compare_results(cpu_res, c);
-//    std::cout << (b_res ? "PASSED!" : "FAILED") << std::endl;
+    auto p = create_lrn_program();
+    std::vector<int> cpu_res, gpu_res;
+    run_cpu(p, cpu_res);
+    run_gpu(p, gpu_res);
 
+    bool b_res = compare_results(cpu_res, gpu_res);
+
+    //std::cout << "cpu_res = " << std::endl;
+    //for_each(cpu_res.begin(), cpu_res.end(), [](auto f) {std::cout << f << "\t";});
+    //std::cout << std::endl;
+
+    //std::cout << "gpu_res = " << std::endl;
+    //for_each(gpu_res.begin(), gpu_res.end(), [](auto f) {std::cout << f << "\t";});
+    //std::cout << std::endl;
+
+    std::cout << (b_res ? "PASSED!" : "FAILED") << std::endl;
     return 0;
 }
 
