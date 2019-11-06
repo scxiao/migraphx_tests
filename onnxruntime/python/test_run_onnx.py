@@ -31,8 +31,11 @@ if len(sys.argv) != 2:
 
 model_file = sys.argv[1]
 
+so = onnxruntime.SessionOptions()
+so.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
 #Run the model on the backend
-session = onnxruntime.InferenceSession(model_file, None)
+session = onnxruntime.InferenceSession(model_file, sess_options = so)
+session.set_providers(['MiGraphXExecutionProvider'])
 
 #Get input_name
 inputs = session.get_inputs()

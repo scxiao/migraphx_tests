@@ -29,7 +29,7 @@ def parse_line(line):
 
     return (label, token_ids, sent_id, seg_id)
 
-def check_lines(model, target_name, batch_lines):
+def check_lines(model, scratch_output, target_name, batch_lines):
     input_map = {"input.1": [],
                  "input.3": [],
                  "2": []}
@@ -44,17 +44,20 @@ def check_lines(model, target_name, batch_lines):
     model_param_map = {}
     args = []
     for key, value in model.get_parameter_shapes().items():
-        if key in input_map:
-            args.append(np.array(input_map[key], dtype = np.longlong).reshape(value.lens()))
+        if key in scratch_output:
+            model_param_map[key] = scratch_output[key]
         else:
-            hash_val = hash(key) % (2 ** 32 - 1)
-            np.random.seed(hash_val)
-            args.append(np.random.randn(value.elements()).astype(np.single).reshape(value.lens()))
+            if key in input_map:
+                args.append(np.array(input_map[key], dtype = np.longlong).reshape(value.lens()))
+            else:
+                hash_val = hash(key) % (2 ** 32 - 1)
+                np.random.seed(hash_val)
+                args.append(np.random.randn(value.elements()).astype(np.single).reshape(value.lens()))
 
-        if target_name == "gpu":
-            model_param_map[key] = migraphx.to_gpu(migraphx.argument(args[-1]))
-        else:
-            model_param_map[key] = migraphx.argument(args[-1])
+            if target_name == "gpu":
+                model_param_map[key] = migraphx.to_gpu(migraphx.argument(args[-1]))
+            else:
+                model_param_map[key] = migraphx.argument(args[-1])
 
     if target_name == "gpu":
         result = np.array(migraphx.from_gpu(model.run(model_param_map)))
@@ -91,13 +94,24 @@ def main():
     model.compile(migraphx.get_target(target_name))
     batch_size = model.get_parameter_shapes()["input.1"].lens()[0]
 
+    # wrap up output and scratch memory to be reused
+    scratch_output = {}
+    for key, value in model.get_parameter_shapes().items():
+        if key == "scratch" or key == "output":
+            hash_val = hash(key) % (2 ** 32 - 1)
+            np.random.seed(hash_val)
+            if target_name == "cpu":
+                scratch_output[key] = migraphx.argument(np.random.randn(value.elements()).astype(np.single).reshape(value.lens()))
+            else:
+                scratch_output[key] = migraphx.to_gpu(migraphx.argument(np.random.randn(value.elements()).astype(np.single).reshape(value.lens())))
+
     # first line is useless information
     accu_num = 0;
     indices = list(range(len(lines) - 1))
     indices = indices[1:(len(lines) - 1) : batch_size]
     start = time.time()
     for i in indices:
-        chk_res = check_lines(model, target_name, lines[i : i + batch_size])
+        chk_res = check_lines(model, scratch_output, target_name, lines[i : i + batch_size])
         accu_num += chk_res
     end = time.time()
     

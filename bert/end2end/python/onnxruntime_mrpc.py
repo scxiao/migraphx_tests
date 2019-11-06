@@ -68,7 +68,11 @@ def main():
 
     # load model
     input_shape = {}
-    session = onnxruntime.InferenceSession(sys.argv[1])
+    so = onnxruntime.SessionOptions()
+    so.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+ 
+    session = onnxruntime.InferenceSession(sys.argv[1], sess_options = so)
+    session.set_providers(['MiGraphXExecutionProvider'])
     inputs = session.get_inputs()
     num_inputs = len(inputs)
     for in_index in range(num_inputs):

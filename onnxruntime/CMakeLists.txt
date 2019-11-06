@@ -6,7 +6,8 @@ set (ORT_LIBS ${ORT_FOLDER}/build/Linux/RelWithDebInfo)
 set (CMAKE_CXX_STANDARD 14)
 set (CMAKE_VERBOSE_MAKEFILE ON)
 
-include_directories(${ORT_FOLDER}/include/onnxruntime)
+include_directories(${ORT_FOLDER}/include/onnxruntime 
+                    ${ORT_FOLDER}/include/onnxruntime/core/session)
                     
 link_directories(${ORT_LIBS})
 

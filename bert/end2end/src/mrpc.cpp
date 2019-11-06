@@ -90,24 +90,25 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    migraphx::target t{};
     std::string target_name("cpu");
     if (std::string(argv[3]) == std::string("gpu"))
     {
+        migraphx::target tmp_t = migraphx::gpu::target{};
+        t = tmp_t;
         target_name = "gpu";
+    }
+    else
+    {
+        migraphx::target tmp_t = migraphx::cpu::target{};
+        t = tmp_t;
     }
 
     auto prog = load_onnx_file(argv[1]);
     //migraphx::quantize(prog);
     //std::cout << "quantized prog = " << std::endl;
     std::cout << prog << std::endl;
-    if (target_name == "cpu")
-    {
-        prog.compile(migraphx::cpu::target{});
-    }
-    else
-    {
-        prog.compile(migraphx::gpu::target{});
-    }
+    prog.compile(t);
 
     std::size_t batch_size = 1;
     auto param_shapes = prog.get_parameter_shapes();
@@ -121,6 +122,20 @@ int main(int argc, char **argv) {
     {
         std::cout << "Open file " << argv[2] << " error!" << std::endl;
         return 1;
+    }
+
+    // Create the scratch and output buffer to be reused for gpu target
+    std::unordered_map<std::string, migraphx::argument> scratch_output;
+    if (target_name == "gpu")
+    {
+        for (auto&& x : prog.get_parameter_shapes())
+        {
+            if (x.first == "output" or x.first == "scratch")
+            {
+                migraphx::argument argu = migraphx::generate_argument(x.second, get_hash(x.first));
+                scratch_output[x.first] = t.copy_to(argu);
+            }
+        }
     }
 
     std::string line;
@@ -165,35 +180,27 @@ int main(int argc, char **argv) {
         for (auto &&x : prog.get_parameter_shapes())
         {
             //std::cout << "gpu input: " << x.first << ", shape = " << x.second << std::endl;
-            migraphx::argument argu{};
-            if (input_map.count(x.first) > 0)
+            if (scratch_output.count(x.first) > 0)
             {
-                argu = migraphx::argument(x.second, input_map[x.first].data());
+                m[x.first] = scratch_output[x.first];
             }
             else
             {
-                argu = migraphx::generate_argument(x.second, get_hash(x.first));
-            }
+                migraphx::argument argu{};
+                if (input_map.count(x.first) > 0)
+                {
+                    argu = migraphx::argument(x.second, input_map[x.first].data());
+                }
+                else
+                {
+                    argu = migraphx::generate_argument(x.second, get_hash(x.first));
+                }
 
-            if (target_name == "cpu")
-            {
-                m[x.first] = argu;
-            }
-            else
-            {
-                m[x.first] = migraphx::gpu::to_gpu(argu);
+                m[x.first] = t.copy_to(argu);
             }
         }
 
-        migraphx::argument result{};
-        if (target_name == "cpu")
-        {
-            result = prog.eval(m);
-        }
-        else
-        {
-            result = migraphx::gpu::from_gpu(prog.eval(m));
-        }
+        migraphx::argument result = t.copy_from(prog.eval(m));
         std::vector<float> vec_output;
         result.visit([&](auto output) { vec_output.assign(output.begin(), output.end()); });
 

@@ -5,6 +5,7 @@
 // onnx runtime include
 #include <core/session/onnxruntime_cxx_api.h>
 #include <core/framework/allocator.h>
+#include <core/providers/migraphx/migraphx_provider_factory.h>
 
 std::string get_type_name(ONNXTensorElementDataType type)
 {
@@ -53,8 +54,10 @@ int main(int argc, char **argv)
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
     Ort::AllocatorWithDefaultOptions ort_alloc;
     Ort::Env env{ORT_LOGGING_LEVEL_WARNING, "test"};
+    Ort::SessionOptions sess_options;
+    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_MiGraphX(sess_options, 0));
 
-    Ort::Session sess{env, argv[1], Ort::SessionOptions{nullptr}};
+    Ort::Session sess{env, argv[1], sess_options};
     //std::size_t input_num = sess.GetInputCount();
     const char * input_names[] = {"input.1", "input.3", "2"};
     const char * output_names[] = {"1627"};

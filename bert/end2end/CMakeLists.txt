@@ -21,10 +21,7 @@ include_directories(${MIGRAPHX_FOLDER}/src/include
                     ${MIGRAPHX_FOLDER}/test/include
                     ${DEPS_FOLDER}/include)
 
-link_directories(${MIGRAPHX_BUILD}/src/onnx 
-                 ${MIGRAPHX_BUILD}/src
-                 ${MIGRAPHX_BUILD}/src/targets/gpu
-                 ${MIGRAPHX_BUILD}/src/targets/cpu
+link_directories(${MIGRAPHX_BUILD}/lib
                  ${DEPS_FOLDER}/lib)
 
 
