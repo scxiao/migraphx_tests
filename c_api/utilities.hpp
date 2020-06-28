@@ -65,7 +65,7 @@ void assign_value(const T* val, size_t num, std::vector<float>& output)
     }
 }
 
-void retrieve_output(migraphx::argument& argu, std::vector<float>& output)
+void retrieve_argument_data(migraphx::argument& argu, std::vector<float>& output)
 {
     auto s = argu.get_shape();
     auto lens = s.lengths();
@@ -123,7 +123,7 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
 {
     migraphx_compile_options options;
     options.offload_copy = true;
-    p.compile(t);
+    p.compile(t, options);
     std::cout << "compiled program = " << std::endl;
     p.print();
     std::cout << std::endl;
@@ -149,7 +149,8 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
         }
         else
         {
-            argu = migraphx::argument::generate(s, get_hash(name));
+            argu = migraphx::argument::generate(s, get_hash(std::string(name)));
+            std::vector<float> vec_data;
         }
         m.add(name, argu);
     }
@@ -168,7 +169,7 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
         std::cout << "Result_" << i << " = " << std::endl;
 
         std::vector<float> resTmp;
-        retrieve_output(out_argu, resTmp);
+        retrieve_argument_data(out_argu, resTmp);
         resData.push_back(resTmp);
         print_res(resTmp);
         std::cout << std::endl;

@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.5)
 project (Test_migraphx_c_api)
 
-#set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
-set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/MIGraph)
+set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
+#set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/MIGraph)
 set (DEPS_FOLDER deps_rocm3.3)
-#set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build_debug)
-set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build)
+set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build_debug)
+#set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build)
 set (MIGRAPHX_DEPS /home/scxiao/Workplace/projects/AMDMIGraphX/${DEPS_FOLDER}/lib
                    /opt/rocm/lib)
 set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
@@ -32,7 +32,7 @@ file(GLOB util_HDR "*.hpp")
 list(REMOVE_ITEM util_SRC ${test_SRC})
 add_library(utils SHARED ${util_SRC})
 
-set(test_examples test_load_onnx.cpp)
+set(test_examples test_run_onnx.cpp)
 
 foreach(filepath_name ${test_examples})
     get_filename_component(src_name ${filepath_name} NAME)

@@ -24,7 +24,7 @@ migraphx::target get_target(std::string name)
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        std::cout << "Usage: " << argv[0] << "[options]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " onnx_file [options]" << std::endl;
         std::cout << "options:" << std::endl;
         std::cout << "\t-s       shape_info_file" << std::endl;
         std::cout << "\t-d       cpu/gpu(default)/both" << std::endl;
@@ -90,9 +90,10 @@ int main(int argc, char **argv) {
 
     if (device_name == "both")
     {
+        migraphx::program prog_g = migraphx::parse_onnx(argv[1]);
         std::vector<std::vector<float>> cpu_res, gpu_res;
         run_prog(prog, migraphx::target("cpu"), cpu_res);
-        run_prog(prog, migraphx::target("gpu"), gpu_res);
+        run_prog(prog_g, migraphx::target("gpu"), gpu_res);
         if (cpu_res.size() != gpu_res.size())
         {
             std::cout << "CPU and GPU have different number of outputs! " << cpu_res.size() << " != " << gpu_res.size() << std::endl;
