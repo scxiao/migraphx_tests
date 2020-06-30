@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project (Test_ORT)
 
-set (ORT_FOLDER /home/scxiao/Workplace/projects/onnxruntime)
-set (ORT_LIBS ${ORT_FOLDER}/build/Linux/RelWithDebInfo)
+set (ORT_FOLDER /code/onnxruntime)
+set (ORT_LIBS ${ORT_FOLDER}/build/Linux/Release)
 set (CMAKE_CXX_STANDARD 14)
 set (CMAKE_VERBOSE_MAKEFILE ON)
 
@@ -15,7 +15,7 @@ file(GLOB util_SRC "*.cpp")
 file(GLOB test_examples test_*.cpp)
 #file(GLOB util_HDR "*.hpp")
 #list(REMOVE_ITEM util_SRC ${test_examples})
-set(test_examples test.cpp)
+set(test_examples test_char_rnn.cpp)
 
 foreach(filepath_name ${test_examples})
     get_filename_component(src_name ${filepath_name} NAME)

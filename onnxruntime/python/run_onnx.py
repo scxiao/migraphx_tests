@@ -5,7 +5,6 @@ from onnx import numpy_helper
 from onnx import AttributeProto, TensorProto, GraphProto
 import time
 import sys
-import argparse
 
 #type_table = {
 #    TensorProto.INT64 : np.int64,
@@ -95,19 +94,15 @@ def run_inference(session, dim_size):
         print(outputs[out_index])
 
 def main():
-    parser = argparse.ArgumentParser(description="Run the xception model")
-    parser.add_argument('--batch_size', type=int, metavar='batch_size', default=1, help='Specify the batch size used in the model')
-    parser.add_argument('model', type=str, metavar='model_file', help='onnx file name of the model')
-    parser.add_argument('--ep', type=str, metavar='ep_name', default="MIGraphX", help='Name of the execution provider, CPU or MIGraphX')
-    args = parser.parse_args()
+    if len(sys.argv) != 3:
+        print("Usage: python run_onnx.py file.onnx ep_name:[MIGraphX, CPU]")
+        exit()
 
-    batch_size = args.batch_size
-    model_file = args.model
-    ep_name = args.ep
+    model_file = sys.argv[1]
+    ep_name = sys.argv[2]
 
     session = load_model(model_file, ep_name)
-    run_inference(session, batch_size)
-
+    run_inference(session, 4)
 
 if __name__ == "__main__":
     main()

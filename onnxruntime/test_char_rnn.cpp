@@ -1,6 +1,7 @@
 // cxx include
 #include <iostream>
 #include <map>
+#include <cstdlib>
 
 // onnx runtime include
 #include <core/session/onnxruntime_cxx_api.h>
@@ -51,6 +52,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
+
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
     Ort::AllocatorWithDefaultOptions ort_alloc;
     Ort::Env env{ORT_LOGGING_LEVEL_WARNING, "test"};
@@ -58,62 +60,71 @@ int main(int argc, char **argv)
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_MIGraphX(sess_options, 0));
 
     Ort::Session sess{env, argv[1], sess_options};
-    //std::size_t input_num = sess.GetInputCount();
-    const char * input_names[] = {"input.1", "input.3", "2"};
-    const char * output_names[] = {"1627"};
+    const char * input_names[20]; 
 
-    std::vector<std::array<int64_t, 128>> input_data(3);
-    std::vector<int64_t> in_dims = {1, 128};
-
+    std::vector<std::vector<float>> input_data;
+    std::vector<std::vector<int64_t>> in_dims;
+    input_data.resize(sess.GetInputCount());
+    in_dims.resize(sess.GetInputCount());
     std::vector<Ort::Value> inputs;
     std::cout << "Input names: " << std::endl;
     for (size_t i = 0; i < sess.GetInputCount(); ++i)
     {
-        std::cout << "input " << i << "\'s name: " << sess.GetInputName(i, ort_alloc);
+        input_names[i] = sess.GetInputName(i, ort_alloc);
+        std::cout << "input " << i << "\'s name: " << input_names[i];
         Ort::TypeInfo info = sess.GetInputTypeInfo(i);
         auto tensor_info = info.GetTensorTypeAndShapeInfo();
-        std::vector<int64_t> dims = tensor_info.GetShape();
+        in_dims[i] = tensor_info.GetShape();
         auto onnx_type = tensor_info.GetElementType();
         std::cout << ", type: " << get_type_name(onnx_type) << ", shape = ";
-        print_vec(dims);
+        print_vec(in_dims[i]);
 
-        if (onnx_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64)
-        {
-            std::fill(input_data[i].begin(), input_data[i].end(), 1);
-            inputs.push_back(Ort::Value::CreateTensor<int64_t>(memory_info, input_data[i].data(), 
-                        input_data[i].size(), in_dims.data(), in_dims.size()));
-        }
+        auto elem_num = std::accumulate(in_dims[i].begin(), in_dims[i].end(), 1, std::multiplies<int64_t>());
+        input_data[i].resize(elem_num);
+        std::generate(input_data[i].begin(), input_data[i].end(), []() { return rand() / (float(INT_MAX)); });
+        inputs.push_back(Ort::Value::CreateTensor<float>(memory_info, input_data[i].data(), 
+                    input_data[i].size(), in_dims[i].data(), in_dims[i].size()));
     }
     std::cout << std::endl;
 
     std::vector<Ort::Value> outputs;
-    std::array<float, 2> output_data;
+    const char * output_names[20];
+    std::vector<std::vector<float>> output_data;
+    std::vector<std::vector<int64_t>> out_dims;
+    auto output_num = sess.GetOutputCount();
+    output_data.resize(output_num);
+    out_dims.resize(output_num);
     std::cout << "Output names:" << std::endl;
     for (size_t i = 0; i < sess.GetOutputCount(); ++i)
     {
-        std::cout << "Out " << i << "'s name: " << sess.GetOutputName(i, ort_alloc);
+        output_names[i] = sess.GetOutputName(i, ort_alloc);
+        std::cout << "Out " << i << "'s name: " << input_names[i];
         Ort::TypeInfo info = sess.GetOutputTypeInfo(i);
         auto tensor_info = info.GetTensorTypeAndShapeInfo();
-        std::vector<int64_t> out_dims = tensor_info.GetShape();
+        out_dims[i] = tensor_info.GetShape();
         auto onnx_type = tensor_info.GetElementType();
         std::cout << ", type: " << get_type_name(onnx_type) << ", shape = ";
-        print_vec(out_dims);
+        print_vec(out_dims[i]);
 
-        if (onnx_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT)
-        {
-            outputs.push_back(Ort::Value::CreateTensor<float>(memory_info, output_data.data(), output_data.size(),
-                        out_dims.data(), out_dims.size()));
-        }
+        std::size_t elem_num = std::accumulate(in_dims[i].begin(), in_dims[i].end(), 1, std::multiplies<int64_t>());
+        output_data[i].resize(elem_num);
+        outputs.push_back(Ort::Value::CreateTensor<float>(memory_info, output_data[i].data(), output_data[i].size(),
+                    out_dims[i].data(), out_dims[i].size()));
     }
     std::cout << std::endl;
 
+std::cout << "Before execution...." << std::endl;
     sess.Run(Ort::RunOptions{nullptr}, input_names, inputs.data(), inputs.size(), output_names,
             outputs.data(), outputs.size());
+std::cout << "After execution...." << std::endl;
 
     std::cout << "outputs = " << std::endl;
-    for (auto val : output_data)
+    std::size_t i = 0;
+    for (auto& output : output_data)
     {
-        std::cout << val << " ";
+        std::cout << "Output " << i++ << " = " << std::endl;
+        print_vec(output);
+        std::cout << std::endl;
     }
     std::cout << std::endl;
 
