@@ -44,7 +44,7 @@ file(GLOB util_SRC "*.cpp")
 file(GLOB test_examples test_*.cpp)
 file(GLOB util_HDR "*.hpp")
 list(REMOVE_ITEM util_SRC ${test_examples})
-set(test_examples test_rewrite_batchnorm.cpp)
+set(test_examples test_run_onnx.cpp)
 #set(test_examples test_rnn.cpp)
 #set(test_examples test_load_onnx.cpp test_run_onnx.cpp test_int8.cpp)
 
