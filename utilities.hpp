@@ -22,7 +22,7 @@ void print_res(const T& res)
 {
     for (std::size_t i = 0; i < res.size(); ++i)
     {
-        std::cout << std::setw(12) << res[i] << ", ";
+        std::cout << std::setprecision(9) << std::setw(12) << res[i] << ", ";
         if ((i + 1) % 6 == 0) {
             std::cout << std::endl;
         }
@@ -63,7 +63,8 @@ void run_cpu(migraphx::program p, std::vector<T> &resData)
         m[x.first] = argu;
         //std::cout << "cpu_arg = " << argu << std::endl;
     }
-    auto result = p.eval(m);
+    auto result = p.eval(m).back();
+    //auto result = p.eval(m);
     result.visit([&](auto output) { resData.assign(output.begin(), output.end()); });
 
     std::cout << "cpu output_shape = " << result.get_shape() << std::endl;
@@ -87,7 +88,7 @@ void run_gpu(migraphx::program p, std::vector<T> &resData)
         m[x.first] = migraphx::gpu::to_gpu(argu);
     }
 
-    auto result = migraphx::gpu::from_gpu(p.eval(m));
+    auto result = migraphx::gpu::from_gpu(p.eval(m).back());
     result.visit([&](auto output) { resData.assign(output.begin(), output.end()); });
 
     //migraphx::gpu::from_gpu(p.eval(m));
@@ -101,10 +102,24 @@ void run_gpu(migraphx::program p, std::vector<T> &resData)
     std::cout << std::endl;
 }
 
+
+void print_vec(std::vector<float>& vec, std::size_t column_size)
+{
+    for (std::size_t i = 0; i < vec.size(); ++i)
+    {
+        std::cout << vec[i] << "\t";
+        if ((i + 1) % column_size == 0)
+            std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
 template <class T>
-void run_prog(migraphx::program p, const migraphx::target& t, std::vector<T> &resData)
+void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::vector<T>> &resData)
 {
     p.compile(t);
+    std::cout << "compiled program = " << std::endl;
+    std::cout << p << std::endl;
     std::string print_name = t.name();
     if (print_name == "miopen")
     {
@@ -113,10 +128,23 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<T> &re
     std::cout << "run on " << print_name << "............." << std::endl << std::endl;
 
     migraphx::program::parameter_map m;
+    std::vector<int64_t> lens = {16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+    std::vector<int> indices = {2, 1, 2, 0, 1, 0};
     for (auto &&x : p.get_parameter_shapes())
     {
         std::cout << "input: " << x.first << "\'shape = " << x.second << std::endl;
-        if (x.second.type() == migraphx::shape::int32_type or
+        if (x.first == "lengths")
+        {
+            auto&& argu = migraphx::argument(x.second, lens.data());
+            m[x.first] = t.copy_to(argu);
+        }
+        else if (x.first == "indices")
+        {
+            auto&& argu = migraphx::argument(x.second, indices.data());
+            std::cout << "argu = " << argu << std::endl;
+            m[x.first] = t.copy_to(argu);
+        }
+        else if (x.second.type() == migraphx::shape::int32_type or
             x.second.type() == migraphx::shape::int64_type)
         {
             auto&& argu = migraphx::fill_argument(x.second, 0);
@@ -126,20 +154,31 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<T> &re
         {
             //auto&& argu = gen_argument(x.second, get_hash(x.first));
             auto&& argu = migraphx::generate_argument(x.second, get_hash(x.first));
-            //std::cout << "Arg = " << argu << std::endl;
+            std::cout << "argu = " << argu << std::endl;
+            std::vector<float> vec_arg;
+            argu.visit([&](auto v) { vec_arg.assign(v.begin(), v.end()); });
             m[x.first] = t.copy_to(argu);
         }
     }
 
-    auto result = t.copy_from(p.eval(m));
+    std::cout << "Begin execution ...." << std::endl;
+    auto results = p.eval(m);
+    std::cout << "End execution ...." << std::endl;
 
-    result.visit([&](auto output) { resData.assign(output.begin(), output.end()); });
-
-
-    std::cout << "Output_shape = " << result.get_shape() << std::endl;
-    std::cout << "Result = " << std::endl;
-    print_res(resData);
-    std::cout << std::endl;
+    std::size_t i = 0;
+    for (auto&& result : results)
+    {
+        auto cpu_res = t.copy_from(result);
+        std::vector<T> resTmp;
+        cpu_res.visit([&](auto output) { resTmp.assign(output.begin(), output.end()); });
+        std::cout << "Output_" << i << "_shape = " << cpu_res.get_shape() << std::endl;
+        std::cout << "Result_" << i << " = " << std::endl;
+        resData.push_back(resTmp);
+        print_res(resTmp);
+        
+        std::cout << std::endl;
+        ++i;
+    }
 }
 
 migraphx::program::parameter_map create_param_map(migraphx::program& p)

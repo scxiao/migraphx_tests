@@ -12,16 +12,21 @@
 #include <migraphx/onnx.hpp>
 
 void load_onnx_file(std::string file_name) {
-    auto prog = migraphx::parse_onnx(file_name);
+    migraphx::onnx_options options;
+    std::vector<std::size_t> vec{4, 128};
+    options.map_input_dims["input_ids"] = vec;
+    options.map_input_dims["input_mask"] = vec;
+    options.map_input_dims["segment_ids"] = vec;
+    auto prog = migraphx::parse_onnx(file_name, options);
     std::cout << "Load program is: " << std::endl;
     std::cout << prog << std::endl;
     //migraphx::quantize_int8(prog, migraphx::gpu::target{}, {});
     //std::cout << "Quantized program is: " << std::endl;
     //std::cout << prog << std::endl;
-    prog.compile(migraphx::gpu::target{});
+    //prog.compile(migraphx::gpu::target{});
 
-    std::cout << "After compiling, program is: " << std::endl;
-    std::cout << prog << std::endl;
+    //std::cout << "After compiling, program is: " << std::endl;
+    //std::cout << prog << std::endl;
 }
 
 //void load_onnx_string(std::string& model_str, std::vector<std::string>& unsupported_nodes) {

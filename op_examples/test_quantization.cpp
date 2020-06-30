@@ -11,6 +11,7 @@
 #include <migraphx/onnx.hpp>
 #include "utilities.hpp"
 
+/*
 migraphx::program create_program()
 {
     migraphx::program p;
@@ -298,53 +299,57 @@ void conv_double()
     std::cout << "quantized program = " << std::endl;
     std::cout << p << std::endl;
 }
+*/
 
 void dot_int32_one_arg()
 {
     auto create_program = [] {
         migraphx::program p;
-        migraphx::shape s{migraphx::shape::int32_type, {16, 16}};
+        migraphx::shape s{migraphx::shape::float_type, {16, 16}};
         auto pa = p.add_parameter("a", s);
 
-        p.add_instruction(migraphx::op::dot{20.0f, 50.0f}, pa, pa);
+        auto r = p.add_instruction(migraphx::op::dot{2000.0f, 5000.0f}, pa, pa);
+        p.add_return({r});
 
         return p;
     };
 
     auto p = create_program();
-    const std::vector<std::pair<float, float>>& quant_params{
-        {1.0f, 1.0f}};
-    migraphx::quantize_int8(p, quant_params, {"dot"});
+    migraphx::quantize_int8(p, migraphx::gpu::target{}, {});
     
     std::cout << "prog = " << std::endl;
     std::cout << p << std::endl;
 }
 
-void dot_int32_convert()
-{
-    auto create_program = [] {
-        migraphx::program p;
-        migraphx::shape sa{migraphx::shape::int8_type, {2, 16}};
-        migraphx::shape sb{migraphx::shape::float_type, {16, 8}};
-        auto pa = p.add_parameter("a", sa);
-        auto pb = p.add_parameter("b", sb);
-
-        auto fpa = p.add_instruction(migraphx::op::convert{migraphx::shape::float_type}, pa);
-        p.add_instruction(migraphx::op::dot{2.0f, 5.5f}, fpa, pb);
-
-        return p;
-    };
-
-    auto p = create_program();
-    const std::vector<std::pair<float, float>>& quant_params{
-        {0.1f, 1.0f}, {0.1f, 0.0f}};
-    migraphx::quantize_int8(p, quant_params, {"dot"});
-
-    std::cout << "prog = " << std::endl;
-    std::cout << p << std::endl;
-}
+//void dot_int32_convert()
+//{
+//    auto create_program = [] {
+//        migraphx::program p;
+//        migraphx::shape sa{migraphx::shape::int8_type, {2, 16}};
+//        migraphx::shape sb{migraphx::shape::float_type, {16, 8}};
+//        auto pa = p.add_parameter("a", sa);
+//        auto pb = p.add_parameter("b", sb);
+//
+//        auto fpa = p.add_instruction(migraphx::op::convert{migraphx::shape::float_type}, pa);
+//        p.add_instruction(migraphx::op::dot{2.0f, 5.5f}, fpa, pb);
+//
+//        return p;
+//    };
+//
+//    auto p = create_program();
+//    const std::vector<std::pair<float, float>>& quant_params{
+//        {0.1f, 1.0f}, {0.1f, 0.0f}};
+//    migraphx::quantize_int8(p, quant_params, {"dot"});
+//
+//    std::cout << "prog = " << std::endl;
+//    std::cout << p << std::endl;
+//}
 
 int main(int argc, char **argv) {
+//    auto p = conv_float();
+//    p.compile(migraphx::gpu::target{});
+//    std::cout << "p = " << std::endl;
+//    std::cout << p << std::endl;
 //    std::vector<float> cpu_res, gpu_res;
 //    auto p1 = create_reduce_mean();
 //    migraphx::target t = migraphx::cpu::target{};
@@ -377,7 +382,7 @@ int main(int argc, char **argv) {
     //dot_int32();
     //conv_double();
     //dot_int32_one_arg();
-	dot_int32_convert();
+	dot_int32_one_arg();
 
     return 0;
 }
