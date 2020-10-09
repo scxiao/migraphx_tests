@@ -42,6 +42,7 @@ std::string process_one_line(std::string line, std::vector<std::size_t>& dims)
 migraphx::onnx_options load_option_file(std::string file)
 {
     migraphx::onnx_options options;
+    options.print_program_on_error = true;
     std::ifstream ifs(file);
     if (!ifs.is_open())
     {

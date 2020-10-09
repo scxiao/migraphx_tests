@@ -12,9 +12,21 @@
 #include <migraphx/onnx.hpp>
 
 void load_onnx_file(std::string file_name) {
-    auto prog = migraphx::parse_onnx(file_name);
+    migraphx::onnx_options options;
+    options.print_program_on_error = true;
+    auto prog = migraphx::parse_onnx(file_name, options);
     std::cout << "Load program is: " << std::endl;
     std::cout << prog << std::endl;
+
+    auto p1 = prog;
+    auto names = p1.get_parameter_names();
+    std::cout << "p1_inputname = " << std::endl;
+    for (auto& name : names)
+    {
+        std::cout << name << "\t";
+    }
+    std::cout << std::endl;
+
     //migraphx::quantize_int8(prog, migraphx::gpu::target{}, {});
     //std::cout << "Quantized program is: " << std::endl;
     //std::cout << prog << std::endl;

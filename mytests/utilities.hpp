@@ -42,7 +42,7 @@ migraphx::argument gen_argument(migraphx::shape s, unsigned long seed)
         using type = typename decltype(as)::type;
 		std::vector<type> v(s.elements());
         std::srand(seed);
-		for_each(v.begin(), v.end(), [&](auto &val) { val = 1.0 * std::rand()/(RAND_MAX); } );
+		for_each(v.begin(), v.end(), [&](auto val) { val = 1.0 * std::rand()/(RAND_MAX); } );
         //std::cout << v[0] << "\t" << v[1] << "\t" << v[2] << std::endl;
         //result     = {s, [v]() mutable { return reinterpret_cast<char*>(v.data()); }};
     });
@@ -114,6 +114,26 @@ void print_vec(std::vector<float>& vec, std::size_t column_size)
     std::cout << std::endl;
 }
 
+migraphx::program::parameter_map create_param_map(migraphx::program& p)
+{
+    migraphx::program::parameter_map m;
+    for (auto&& x : p.get_parameter_shapes())
+    {
+        if (x.second.type() == migraphx::shape::int32_type or
+            x.second.type() == migraphx::shape::int64_type)
+        {
+            auto&& argu = migraphx::fill_argument(x.second, 0);
+            m[x.first] = argu;
+        }
+        else
+        {
+            m[x.first] = migraphx::generate_argument(x.second, get_hash(x.first));
+        }
+    }
+
+    return m;
+}
+
 template <class T>
 void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::vector<T>> &resData)
 {
@@ -141,13 +161,13 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
         else if (x.first == "indices")
         {
             auto&& argu = migraphx::argument(x.second, indices.data());
-            std::cout << "argu = " << argu << std::endl;
+            //std::cout << "argu = " << argu << std::endl;
             m[x.first] = t.copy_to(argu);
         }
         else if (x.second.type() == migraphx::shape::int32_type or
             x.second.type() == migraphx::shape::int64_type)
         {
-            auto&& argu = migraphx::fill_argument(x.second, 0);
+            auto&& argu = migraphx::fill_argument(x.second, 1);
             m[x.first] = t.copy_to(argu);
         }
         else
@@ -181,16 +201,6 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
     }
 }
 
-migraphx::program::parameter_map create_param_map(migraphx::program& p)
-{
-    migraphx::program::parameter_map m;
-    for (auto&& x : p.get_parameter_shapes())
-    {
-        m[x.first] = migraphx::generate_argument(x.second, get_hash(x.first));
-    }
-
-    return m;
-}
 
 template<typename T>
 bool compare_results(const T& cpu_res, const T& gpu_res)

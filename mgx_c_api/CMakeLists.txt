@@ -3,10 +3,11 @@ project (Test_migraphx_c_api)
 
 set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
 #set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/MIGraph)
-set (DEPS_FOLDER deps_rocm3.3)
+#set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/migraphx_onnx_backend)
+set (DEPS_FOLDER deps_json)
 set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build_debug)
 #set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build)
-set (MIGRAPHX_DEPS /home/scxiao/Workplace/projects/AMDMIGraphX/${DEPS_FOLDER}/lib
+set (MIGRAPHX_DEPS /home/scxiao/Workplace/projects/MIGraph/${DEPS_FOLDER}/lib
                    /opt/rocm/lib)
 set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
 set (CMAKE_CXX_STANDARD 14)

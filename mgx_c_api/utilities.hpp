@@ -111,6 +111,11 @@ void retrieve_argument_data(migraphx::argument& argu, std::vector<float>& output
         uint8_t *ptr = reinterpret_cast<uint8_t*>(argu.data());
         assign_value(ptr, elem_num, output);
     }
+    else if (type == migraphx_shape_bool_type)
+    {
+        bool *ptr = reinterpret_cast<bool*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
     else
     {
         std::cout << "Type not support" << std::endl;
@@ -150,7 +155,6 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
         else
         {
             argu = migraphx::argument::generate(s, get_hash(std::string(name)));
-            std::vector<float> vec_data;
         }
         m.add(name, argu);
     }
