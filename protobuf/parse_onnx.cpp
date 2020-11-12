@@ -4,40 +4,54 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <unordered_map>
 
 using node_map = std::unordered_map<std::string, onnx::NodeProto>;
-
-static node_map get_nodes(const onnx::GraphProto& graph)
+void print_identification(int n)
 {
-    std::unordered_map<std::string, onnx::NodeProto> result;
-    std::size_t n = 0;
-    for(auto&& node : graph.node())
-    {
-        if(node.output().empty())
-        {
-            if(node.name().empty())
-            {
-                result["migraphx_unamed_node_" + std::to_string(n)] = node;
-                n++;
-            }
-            else
-            {
-                result[node.name()] = node;
-            }
-        }
-        for(auto&& output : node.output())
-        {
-            result[output] = node;
-        }
-    }
-    return result;
+    for (int m = 0; m < n; m++)
+        std::cout << "        ";
 }
 
-
-void parse_graph(const onnx::GraphProto& graph)
+void parse_graph(const onnx::GraphProto& graph, int n)
 {
-	node_map nodes = get_nodes(graph);    
+    std::cout << "Initializer names = " << std::endl;
+    for(auto&& f : graph.initializer())
+    {
+        print_identification(n);
+        std::cout << "\t" << f.name() << std::endl;
+    }
+
+    std::cout << "Input names = " << std::endl;
+    for(auto&& input : graph.input())
+    {
+        const std::string& name = input.name();
+        print_identification(n);
+        std::cout << "\t " << name << std::endl;
+    }
+
+    print_identification(n);
+    std::cout << "Node_info = " << std::endl;
+    int i = 0;
+    for(auto&& node : graph.node())
+    {
+        print_identification(n);
+        std::cout << std::setw(8) << i++;
+        std::cout << "\t" << node.op_type() << std::endl;
+        if (node.op_type() == "Loop")
+        {
+			for(auto&& attr : node.attribute())
+			{
+                auto&& sub_graph = attr.g();
+                print_identification(n);
+                std::cout << "n = " << n << ", sub_graph = " << std::endl;
+                parse_graph(sub_graph, n + 1);
+			}
+        }
+    }
+
+    std::cout << std::endl;
 }
 
 void parse_onnx(const std::string& file_name)
@@ -51,10 +65,10 @@ void parse_onnx(const std::string& file_name)
 
     onnx::ModelProto model;
     if (model.ParseFromIstream(&input))
-    {
+     {
         if (model.has_graph())
         {
-            parse_graph(model.graph());
+            parse_graph(model.graph(), 1);
         }
     }
 }

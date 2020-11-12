@@ -41,6 +41,12 @@ def get_attribute(node, attr_name, default_value=None):
         return helper.get_attribute_value(found[0])
     return default_value
 
+def print_initializers(model):
+    initializers = dict([(i.name, i) for i in model.graph.initializer])
+    for k, v in initializers.items():
+        array_v = numpy_helper.to_array(v)
+        print("ini_name = {}, val = {}".format(k, array_v))
+
 def print_constant_node(model):
     for node in model.graph.node:
         if node.op_type == "Constant":
@@ -48,8 +54,12 @@ def print_constant_node(model):
             print("value_numpy = {}".format(numpy_helper.to_array(t)))
             print("value = {}".format(t))
 
+            for on in node.output:
+                print("output = {}".format(on))
+
 
 
 
 print_model_info(original_model)
 print_constant_node(original_model)
+print_initializers(original_model)

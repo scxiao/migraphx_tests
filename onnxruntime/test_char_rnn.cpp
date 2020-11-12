@@ -11,6 +11,7 @@
 std::string get_type_name(ONNXTensorElementDataType type)
 {
     static std::map<ONNXTensorElementDataType, std::string> table = {
+        {ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL, "bool"}, 
         {ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16, "half"}, 
         {ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, "float"},
         {ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE, "double"},
@@ -44,6 +45,15 @@ void print_vec(std::vector<T>& vec)
     std::cout << "}" << std::endl;
 }
 
+template<class T>
+void set_default_dims(std::vector<T>& vec)
+{
+    for (auto& v : vec) {
+        if (v < 0) v = 1;
+    }
+}
+
+
 int main(int argc, char **argv)
 {
     if (argc != 2)
@@ -75,6 +85,7 @@ int main(int argc, char **argv)
         Ort::TypeInfo info = sess.GetInputTypeInfo(i);
         auto tensor_info = info.GetTensorTypeAndShapeInfo();
         in_dims[i] = tensor_info.GetShape();
+        set_default_dims(in_dims[i]);
         auto onnx_type = tensor_info.GetElementType();
         std::cout << ", type: " << get_type_name(onnx_type) << ", shape = ";
         print_vec(in_dims[i]);
@@ -102,6 +113,7 @@ int main(int argc, char **argv)
         Ort::TypeInfo info = sess.GetOutputTypeInfo(i);
         auto tensor_info = info.GetTensorTypeAndShapeInfo();
         out_dims[i] = tensor_info.GetShape();
+        set_default_dims(out_dims[i]);
         auto onnx_type = tensor_info.GetElementType();
         std::cout << ", type: " << get_type_name(onnx_type) << ", shape = ";
         print_vec(out_dims[i]);

@@ -12,10 +12,10 @@ def run_model(model, target):
         print("Parameter {} -> {}".format(key, value))
         hash_val = hash(key) % (2 ** 32 - 1)
         np.random.seed(hash_val)
-        args.append(np.random.randn(value.elements()).astype(np.single).reshape(value.lens()))
+        args.append(np.random.randn(value.elements()).astype(np.float16).reshape(value.lens()))
         params[key] = migraphx.argument(args[-1])
 
-        result = np.array(model.run(params))
+        result = np.array(model.run(params)[-1])
 
     print("")
     print("Result = \n{}".format(result))

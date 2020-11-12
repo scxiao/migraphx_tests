@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 project (Test_protobuf)
 
 
-set (CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cget)
+#set (CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cget)
+set (CMAKE_PREFIX_PATH /home/scxiao/Workplace/projects/AMDMIGraphX/deps_rocm3.3)
 
 find_package(Protobuf REQUIRED)
 

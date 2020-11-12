@@ -1,2 +1,2 @@
-export PYTHONPATH=/home/scxiao/Workplace/projects/AMDMIGraphX/build/src/py:$PYTHONPATH
+export PYTHONPATH=/home/scxiao/Workplace/projects/migraphx_onnx_backend/build/lib:$PYTHONPATH
 
