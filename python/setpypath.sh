@@ -1,2 +1,2 @@
-export PYTHONPATH=/home/scxiao/Workplace/projects/AMDMIGraphX/build_rocm3.0/lib:$PYTHONPATH
+export PYTHONPATH=/home/scxiao/Workplace/projects/AMDMIGraphX/build/lib:$PYTHONPATH
 
