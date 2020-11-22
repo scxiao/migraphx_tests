@@ -6,14 +6,7 @@ from onnx import AttributeProto, TensorProto, GraphProto
 import time
 import sys
 import os
-
 import argparse
-
-#type_table = {
-#    TensorProto.INT64 : np.int64,
-#    TensorProto.INT32 : np.int32,
-#    TensorProto.FLOAT : np.float32
-#}
 
 type_table = {
     'tensor(int64)' : np.int64,
