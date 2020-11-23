@@ -29,12 +29,48 @@ def load_model(model_file, ep_name):
     ep_name = ep_name + "ExecutionProvider"
     session.set_providers([ep_name])
 
-    #Get input_name
-    inputs = session.get_inputs()
-    num_inputs = len(inputs)
-    print("Model {} has {} inputs".format(model_file, num_inputs))
-
     return session
+
+def copy_onnx_file(model_file, dst_dir):
+    if not os.path.isdir(dst_dir):
+        os.mkdir(dst_dir)
+    file_name = os.path.basename(model_file)
+    dst_file = dst_dir + '/' + file_name
+    cmd = 'cp ' + model_file + ' ' + dst_file
+    os.system(cmd)
+
+def wrapup_inputs(session, default_batch_size):
+    param_info = session.get_inputs()
+    input_num = len(param_info)
+    
+    input_data = {}
+    for in_idx in range(input_num):
+        name = param_info[in_idx].name
+        print("Input parameter: {}".format(name))
+        dims = param_info[in_idx].shape
+
+        input_type = param_info[in_idx].type
+        print("shape: type = {}, dim = {}".format(input_type, dims))
+
+        # check dynamic input shape
+        is_dynamic_shape = False
+        for index in range(len(dims)):
+            if isinstance(dims[index], str) or dims[index] == 'None':
+                is_dynamic_shape = True
+                dims[index] = default_batch_size
+
+        if is_dynamic_shape == True:
+            print('Dynamic input shape, change shape to: {}'.format(dims))
+
+        np_type = get_numpy_type(input_type)
+        if np_type == np.int32 or np_type == np.int64:
+            print("integer type")
+            input_data[name] = np.ones(dims).astype(np_type)
+        else:
+            print("type = {}".format(np_type))
+            input_data[name] = np.random.random(dims).astype(np_type)
+
+    return input_data
 
 def write_tensor_to_file(data, out_dir, index, is_input):
     # convert numpy array to onnx tensor
@@ -53,72 +89,27 @@ def write_tensor_to_file(data, out_dir, index, is_input):
     file.write(data_str)
     file.close()
 
-def copy_model(model_file, dst_dir):
-    if not os.path.isdir(dst_dir):
-        os.mkdir(dst_dir)
-    file_name = os.path.basename(model_file)
-    dst_file = dst_dir + '/' + file_name
-    cmd = 'cp ' + model_file + ' ' + dst_file
-    os.system(cmd)
-
-def run_inference(session, default_batch_size, test_dir):
-    #Get input_name
-    inputs = session.get_inputs()
-    num_inputs = len(inputs)
-
-    data_dir = test_dir + '/test_data_set_0'
-
-    #Wrap up inputs
-    input_dict = {}
-    for input_index in range(num_inputs):
-        name = inputs[input_index].name
-        print("Input parameter: {}".format(name))
-        shape = inputs[input_index].shape
-        print("shape = {}".format(shape))
-        print("batch_size = {}".format(shape[0]))
-
-        # check dynamic shape
-        for index in range(len(shape)):
-            if isinstance(shape[index], str):
-                shape[index] = default_batch_size
-        print("shape = {}".format(shape))
-
-        input_type = inputs[input_index].type
-        print(input_type)
-
-        np_type = get_numpy_type(input_type)
-
-        # handle dynamic shape
-        is_dynamic_shape = False
-        for i in range(len(shape)):
-            if shape[i] == 'None':
-                is_dynamic_shape = True
-                shape[i] = default_batch_size
-
-        if is_dynamic_shape == True:
-            print('Dynamic input shape, change shape to: {}'.format(shape))
-
-        if np_type == np.int32 or np_type == np.int64:
-            print("integer type")
-            input_dict[name] = np.ones(shape).astype(np_type)
-        else:
-            print("type = {}".format(np_type))
-            input_dict[name] = np.random.random(shape).astype(np_type)
+def write_inputs_to_files(input_data, out_dir):
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
 
     index = 0
-    for keys, values in input_dict.items():
-        print(keys)
-        print(values)
-        write_tensor_to_file(values, data_dir, index, True)
+    for key, val in input_data.items():
+        write_tensor_to_file(val, out_dir, index, True)
         index = index + 1
 
-    outputs = session.run([], input_dict)
-    num_outputs = len(outputs)
-    for out_index in range(num_outputs):
-        print("output[{}]'s shape = {}".format(out_index, outputs[out_index].shape))
-        print("output[{}] = ".format(out_index))
-        print(outputs[out_index])
-        write_tensor_to_file(outputs[out_index], data_dir, out_index, False)
+def write_outputs_to_files(output_data, out_dir):
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+
+    index = 0
+    for val in output_data:
+        write_tensor_to_file(val, out_dir, index, False)
+        index = index + 1
+
+def run_inference(session, input_data):
+    outputs = session.run([], input_data)
+    return outputs
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run the xception model")
@@ -126,29 +117,40 @@ def parse_args():
     parser.add_argument('model', type=str, metavar='model_file', help='onnx file name of the model')
     parser.add_argument('--ep', type=str, metavar='ep_name', default="MIGraphX", help='Name of the execution provider, CPU or MIGraphX')
     parser.add_argument('--create_test', type=bool, metavar='create_test', default=bool, help='Creat a unit test for the run')
-    parser.add_argument('--case_dir', type=str, default='ort_test', help='folder where the created test is stored')
+    parser.add_argument('--case_dir', type=str, metavar='case_dir', default='ort_test', help='folder where the created test is stored')
     parser.add_argument('--case_num', type=int, metavar='case_num', default=1, help='Number of cases')
     args = parser.parse_args()
 
     return args
 
-
 def main():
     args = parse_args()
-
     batch_size = args.batch_size
     model_file = args.model
     ep_name = args.ep
-    test_dir = args.case_dir
-    if not args.case_dir:
-        test_dir = 'example'
+    out_dir = args.case_dir
+    case_num = args.case_num
+    print("Test case write to folder: {}".format(out_dir))
+
+    # create a session
+    session = load_model(model_file, ep_name)
 
     # copy model from source to distination
-    copy_model(model_file, test_dir)
+    print("Copy {} to {}".format(model_file, out_dir))
+    copy_onnx_file(model_file, out_dir)
 
-    session = load_model(model_file, ep_name)
-    run_inference(session, batch_size, test_dir)
+    for i in range(case_num):
+        # write input data to files
+        data_dir = out_dir + '/test_data_set_' + str(i)
 
+        input_data = wrapup_inputs(session, batch_size)
+
+        write_inputs_to_files(input_data, data_dir)
+
+        out_data = run_inference(session, input_data)
+
+        # write output data to files
+        write_outputs_to_files(out_data, data_dir)
 
 if __name__ == "__main__":
     main()
