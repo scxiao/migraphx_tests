@@ -140,7 +140,9 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
 	TRTUniquePtr<nvinfer1::IExecutionContext>& context)
 {
 	TRTUniquePtr<nvinfer1::IBuilder> builder{nvinfer1::createInferBuilder(gLogger)};
-	TRTUniquePtr<nvinfer1::INetworkDefinition> network{builder->createNetwork()};
+    const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
+    TRTUniquePtr<nvinfer1::INetworkDefinition> network{builder->createNetworkV2(explicitBatch)};
+	//TRTUniquePtr<nvinfer1::INetworkDefinition> network{builder->createNetwork()};
 	TRTUniquePtr<nvonnxparser::IParser> parser{nvonnxparser::createParser(*network, gLogger)};
 
 	// parse ONNX

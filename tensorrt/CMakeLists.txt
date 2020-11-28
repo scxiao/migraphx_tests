@@ -24,7 +24,7 @@ link_directories(/tensorrt/lib
                  /usr/local/cuda/lib64
                  /usr/local/lib)
 add_executable(test test1.cpp)
-target_link_libraries(test nvonnxparser nvinfer cudart opencv_cudaarithm opencv_imgcodecs opencv_core opencv_cudawarping)
+target_link_libraries(test nvonnxparser nvinfer cudart opencv_cudaarithm opencv_cudabgsegm opencv_cudawarping opencv_core opencv_cudabgsegm opencv_cudaarithm opencv_imgcodecs)
 
 #file(GLOB SRC_FILES "src/*.cpp")
 #foreach(filepath_name ${SRC_FILES})
