@@ -61,5 +61,5 @@ def print_constant_node(model):
 
 
 print_model_info(original_model)
-print_constant_node(original_model)
-print_initializers(original_model)
+#print_constant_node(original_model)
+#print_initializers(original_model)
