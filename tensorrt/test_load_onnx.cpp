@@ -62,12 +62,102 @@ using TRTUniquePtr = std::unique_ptr<T, TRTDestroy>;
 
 void printCudaEngine(TRTUniquePtr<nvinfer1::ICudaEngine>& engine)
 {
+    std::cout << "PrintCudaEngine===============" << std::endl;
     auto num_layers = engine->getNbLayers();
     std::cout << "num_of_layers = " << num_layers << std::endl;
     auto max_batch_size = engine->getMaxBatchSize();
     std::cout << "max_batch_size = " << max_batch_size << std::endl;
     auto workspace_size = engine->getWorkspaceSize();
     std::cout << "workspace_size = " << workspace_size << std::endl;
+
+    int num_bindings = engine->getNbBindings();
+    for (int i = 0; i < num_bindings; ++i)
+    {
+        if (engine->bindingIsInput(i))
+        {
+            std::cout << "binding " << i << engine->getBindingName(i) << " is input" << std::endl;
+        }
+        else
+        {
+            std::cout << "binding " << i << engine->getBindingName(i) << " is output" << std::endl;
+        }
+    }
+}
+
+void printDims(const nvinfer1::Dims& dims)
+{
+    std::cout << "{";
+    for (size_t i = 0; i < dims.nbDims; ++i)
+    {
+        if (i != 0) std::cout << ", ";
+        std::cout << dims.d[i];
+    }
+    std::cout << "}";
+}
+
+void printTensor(nvinfer1::ITensor* tensor)
+{
+    const char *name = tensor->getName();
+    std::cout << "name = " << name << ", dim = ";
+    nvinfer1::Dims dims = tensor->getDimensions();
+    printDims(dims);
+}
+
+void printLayerOutput(nvinfer1::ILayer* layer)
+{
+    auto num_outputs = layer->getNbOutputs();
+    for (int i = 0; i < num_outputs; ++i)
+    {
+        nvinfer1::ITensor* tensor = layer->getOutput(i);
+        std::cout << "\tOutput " << i << ": ";
+        printTensor(tensor);
+        std::cout << std::endl;
+    }
+}
+
+void printNetwork(TRTUniquePtr<nvinfer1::INetworkDefinition>& network)
+{
+    std::cout << "PrintNetwork==================" << std::endl;
+    auto num_layers = network->getNbLayers();
+    std::cout << "num_of_layers = " << num_layers << std::endl;
+    std::cout << "Layer info:" << std::endl;
+    for (int i = 0; i < num_layers; ++i)
+    {
+        nvinfer1::ILayer* layer = network->getLayer(i);
+        const char* name = layer->getName();
+        std::cout << "Layer " << i << ": " << name << std::endl;
+        printLayerOutput(layer);
+    }
+
+    std::cout << std::endl;
+}
+
+bool isDynamicShape(TRTUniquePtr<nvinfer1::INetworkDefinition>& network)
+{
+    bool dynamic_shape = false;
+    int num_inputs = network->getNbInputs();
+    for (int i = 0; i < num_inputs; ++i)
+    {
+        auto input = network->getInput(i);
+        nvinfer1::Dims dims = input->getDimensions();
+        int nb_dims = dims.nbDims;
+        if (input->isShapeTensor())
+        {
+            dynamic_shape = true;
+        }
+        else
+        {
+            for (int j = 0; j < nb_dims; ++j)
+            {
+                if (dims.d[j] == -1)
+                {
+                    dynamic_shape = true;
+                }
+            }
+        }
+    }
+
+    return dynamic_shape;
 }
 
 void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaEngine>& engine,
@@ -77,6 +167,7 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
     const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     TRTUniquePtr<nvinfer1::INetworkDefinition> network{builder->createNetworkV2(explicitBatch)};
     TRTUniquePtr<nvonnxparser::IParser> parser{nvonnxparser::createParser(*network, gLogger)};
+    nvinfer1::IOptimizationProfile* profile = nullptr;
 
     // parse ONNX
     if (!parser->parseFromFile(model_path.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kINFO)))
@@ -91,11 +182,38 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
     {
         config->setFlag(nvinfer1::BuilderFlag::kFP16);
     }
+    config->addOptimizationProfile(profile);
 
     builder->setMaxBatchSize(1);
+    if (profile == nullptr)
+    {
+        profile = builder->createOptimizationProfile();
+    }
+
+    int num_inputs = network->getNbInputs();
+    for (int i = 0; i < num_inputs; ++i)
+    {
+        auto input = network->getInput(i);
+        const std::string& input_name = input->getName();
+        nvinfer1::Dims dims = input->getDimensions();
+        int nb_dims = dims.nbDims;
+
+        nvinfer1::Dims dims_min(dims), dims_opt(dims), dims_max(dims);
+        for (int j = 0; j < nb_dims; ++j)
+        {
+            dims_min.d[j] = 2;
+            dims_opt.d[j] = 3;
+            dims_max.d[j] = 4;
+        }
+
+        profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMIN, dims_min);
+        profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kOPT, dims_opt);
+        profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMAX, dims_max);
+    }
 
     engine.reset(builder->buildEngineWithConfig(*network, *config));
     context.reset(engine->createExecutionContext());
+    printNetwork(network);
 }
 
 int main(int argc, char **argv)
