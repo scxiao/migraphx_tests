@@ -185,7 +185,7 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
     }
 
     TRTUniquePtr<nvinfer1::IBuilderConfig> config{builder->createBuilderConfig()};
-    config->setMaxWorkspaceSize(1ULL << 20);
+    config->setMaxWorkspaceSize(1ULL << 24);
     if (builder->platformHasFastFp16())
     {
         config->setFlag(nvinfer1::BuilderFlag::kFP16);
