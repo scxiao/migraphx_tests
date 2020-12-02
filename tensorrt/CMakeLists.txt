@@ -23,7 +23,7 @@ include_directories(/workspace/TensorRT/include
 link_directories(/tensorrt/lib
                  /usr/local/cuda/lib64
                  /usr/local/lib)
-add_executable(test test_run_onnx.cpp)
+add_executable(test test_load_onnx.cpp)
 target_link_libraries(test nvonnxparser nvinfer cudart opencv_cudaarithm opencv_cudabgsegm opencv_cudawarping opencv_core opencv_cudabgsegm opencv_cudaarithm opencv_imgcodecs)
 
 #file(GLOB SRC_FILES "src/*.cpp")

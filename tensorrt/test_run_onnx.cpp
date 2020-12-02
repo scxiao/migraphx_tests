@@ -175,7 +175,7 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
     const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     TRTUniquePtr<nvinfer1::INetworkDefinition> network{builder->createNetworkV2(explicitBatch)};
     TRTUniquePtr<nvonnxparser::IParser> parser{nvonnxparser::createParser(*network, gLogger)};
-    nvinfer1::IOptimizationProfile* profile = nullptr;
+    // nvinfer1::IOptimizationProfile* profile = nullptr;
 
     // parse ONNX
     if (!parser->parseFromFile(model_path.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kINFO)))
@@ -190,13 +190,13 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
     {
         config->setFlag(nvinfer1::BuilderFlag::kFP16);
     }
-    config->addOptimizationProfile(profile);
+    // config->addOptimizationProfile(profile);
 
     builder->setMaxBatchSize(1);
-    if (profile == nullptr)
-    {
-        profile = builder->createOptimizationProfile();
-    }
+    // if (profile == nullptr)
+    // {
+    //     profile = builder->createOptimizationProfile();
+    // }
 
     int num_inputs = network->getNbInputs();
     for (int i = 0; i < num_inputs; ++i)
@@ -206,17 +206,17 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
         nvinfer1::Dims dims = input->getDimensions();
         int nb_dims = dims.nbDims;
 
-        nvinfer1::Dims dims_min(dims), dims_opt(dims), dims_max(dims);
-        for (int j = 0; j < nb_dims; ++j)
-        {
-            dims_min.d[j] = 2;
-            dims_opt.d[j] = 3;
-            dims_max.d[j] = 4;
-        }
+        // nvinfer1::Dims dims_min(dims), dims_opt(dims), dims_max(dims);
+        // for (int j = 0; j < nb_dims; ++j)
+        // {
+        //     dims_min.d[j] = 2;
+        //     dims_opt.d[j] = 3;
+        //     dims_max.d[j] = 4;
+        // }
 
-        profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMIN, dims_min);
-        profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kOPT, dims_opt);
-        profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMAX, dims_max);
+        // profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMIN, dims_min);
+        // profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kOPT, dims_opt);
+        // profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMAX, dims_max);
     }
 
     engine.reset(builder->buildEngineWithConfig(*network, *config));
@@ -271,44 +271,99 @@ struct helper<T, true>
 }
 
 template<class T>
+void print_vec(const std::vector<T>& vec)
+{
+    std::cout << "{";
+    for (std::size_t i = 0; i < vec.size(); ++i)
+    {
+        if (i != 0) std::cout << ", ";
+        std::cout << vec[i];
+    }
+    std::cout << "}" << std::endl;
+}
+
+template<class T>
 std::vector<T> gen_input(const std::string& name, std::size_t elem_num)
 {
     auto vec = detail::helper<T>::gen_input(name, elem_num);
+    std::cout << "Input: ";
+    print_vec(vec);
     return std::move(vec);
 }
 
-void wrapup_inputs(const std::string &name, const nvinfer1::Dims& dims, nvinfer1::DataType type, void* &buffer)
+void malloc_nbbinding_buffer(const std::string &name, const nvinfer1::Dims& dims, nvinfer1::DataType type, bool is_input, void* &buffer)
 {
     std::size_t size = getSizeByDim(dims);
-    std::size_t type_size = 1;
     std::size_t binding_size = 0;
     if (type == nvinfer1::DataType::kINT8)
     {
         binding_size = sizeof(int8_t) * size;
         cudaMalloc(&buffer, binding_size);
-        auto vec = gen_input<int8_t>(name, size);
-        cudaMemcpy(buffer, vec.data(), binding_size, cudaMemcpyHostToDevice);
+        if (is_input)
+        {
+            auto vec = gen_input<int8_t>(name, size);
+            cudaMemcpy(buffer, vec.data(), binding_size, cudaMemcpyHostToDevice);
+        }
     }
     else if (type == nvinfer1::DataType::kFLOAT)
     {
         binding_size = sizeof(float) * size;
         cudaMalloc(&buffer, binding_size);
-        auto vec = gen_input<float>(name, size);
-        cudaMemcpy(buffer, vec.data(), binding_size, cudaMemcpyHostToDevice);
+        if (is_input)
+        {
+            auto vec = gen_input<float>(name, size);
+            cudaMemcpy(buffer, vec.data(), binding_size, cudaMemcpyHostToDevice);
+        }
     }
     else if (type == nvinfer1::DataType::kBOOL)
     {
         binding_size = sizeof(bool) * size;
         cudaMalloc(&buffer, binding_size);
-        auto vec = gen_input<int8_t>(name, size);
-        cudaMemcpy(buffer, vec.data(), binding_size, cudaMemcpyHostToDevice);
+        if (is_input)
+        {
+            auto vec = gen_input<int8_t>(name, size);
+            cudaMemcpy(buffer, vec.data(), binding_size, cudaMemcpyHostToDevice);
+        }
     }
     else if (type == nvinfer1::DataType::kINT32)
     {
         binding_size = sizeof(int32_t) * size;
         cudaMalloc(&buffer, binding_size);
-        auto vec = gen_input<int32_t>(name, size);
-        cudaMemcpy(buffer, vec.data(), binding_size, cudaMemcpyHostToDevice);
+        if (is_input)
+        {
+            auto vec = gen_input<int32_t>(name, size);
+            cudaMemcpy(buffer, vec.data(), binding_size, cudaMemcpyHostToDevice);
+        }
+    }
+    else
+    {
+        std::abort();
+    }
+}
+
+void copy_output_to_host(const std::string &name, const nvinfer1::Dims& dims, nvinfer1::DataType type, void* buffer)
+{
+    std::size_t size = getSizeByDim(dims);
+    if (type == nvinfer1::DataType::kINT8 or type == nvinfer1::DataType::kBOOL)
+    {
+        std::vector<int8_t> output(size);
+        cudaMemcpy(output.data(), buffer, output.size() * sizeof(int8_t), cudaMemcpyDeviceToHost);
+        std::cout << "Output: ";
+        print_vec(output);
+    }
+    else if (type == nvinfer1::DataType::kFLOAT)
+    {
+        std::vector<float> output(size);
+        cudaMemcpy(output.data(), buffer, output.size() * sizeof(float), cudaMemcpyDeviceToHost);
+        std::cout << "Output: ";
+        print_vec(output);
+    }
+    else if (type == nvinfer1::DataType::kINT32)
+    {
+        std::vector<int32_t> output(size);
+        cudaMemcpy(output.data(), buffer, output.size() * sizeof(int32_t), cudaMemcpyDeviceToHost);
+        std::cout << "Output: ";
+        print_vec(output);
     }
     else
     {
@@ -344,11 +399,12 @@ int main(int argc, char **argv)
         auto&& dims = engine->getBindingDimensions(i);
         auto&& type = engine->getBindingDataType(i);
         std::size_t binding_size = 1;
+        bool is_input = engine->bindingIsInput(i);
+        malloc_nbbinding_buffer(name, dims, type, is_input, buffers[i]);
+        printDims(i, name, dims, is_input);
 
-        printDims(i, name, dims, engine->bindingIsInput(i));
-        if (engine->bindingIsInput(i))
+        if (is_input)
         {
-            wrapup_inputs(name, dims, type, buffers[i]);
             input_dims.emplace_back(dims);
         }
         else
@@ -363,8 +419,19 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // inference
-    // context->enqueue(batch_size, buffers.data(), 0, nullptr);
+    context->executeV2(buffers.data());
+
+    for (std::size_t i = 0; i < engine->getNbBindings(); ++i)
+    {
+        bool is_input = engine->bindingIsInput(i);
+        auto&& name = engine->getBindingName(i);
+        auto&& dims = engine->getBindingDimensions(i);
+        auto&& type = engine->getBindingDataType(i);
+        if (!is_input)
+        {
+            copy_output_to_host(name, dims, type, buffers[i]);
+        }
+    }
 
     for (void *buf : buffers)
     {
