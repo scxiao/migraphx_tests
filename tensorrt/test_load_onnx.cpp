@@ -176,44 +176,47 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
         return; 
     }
 
+    printNetwork(network);
+
     TRTUniquePtr<nvinfer1::IBuilderConfig> config{builder->createBuilderConfig()};
-    config->setMaxWorkspaceSize(1ULL << 30);
+    config->setMaxWorkspaceSize(1ULL << 20);
     if (builder->platformHasFastFp16())
     {
         config->setFlag(nvinfer1::BuilderFlag::kFP16);
     }
-    config->addOptimizationProfile(profile);
 
     builder->setMaxBatchSize(1);
     if (profile == nullptr)
     {
         profile = builder->createOptimizationProfile();
     }
+    config->addOptimizationProfile(profile);
 
-    int num_inputs = network->getNbInputs();
-    for (int i = 0; i < num_inputs; ++i)
-    {
-        auto input = network->getInput(i);
-        const std::string& input_name = input->getName();
-        nvinfer1::Dims dims = input->getDimensions();
-        int nb_dims = dims.nbDims;
+    // int num_inputs = network->getNbInputs();
+    // for (int i = 0; i < num_inputs; ++i)
+    // {
+    //     auto input = network->getInput(i);
+    //     const std::string& input_name = input->getName();
+    //     nvinfer1::Dims dims = input->getDimensions();
+    //     int nb_dims = dims.nbDims;
 
-        nvinfer1::Dims dims_min(dims), dims_opt(dims), dims_max(dims);
-        for (int j = 0; j < nb_dims; ++j)
-        {
-            dims_min.d[j] = 2;
-            dims_opt.d[j] = 3;
-            dims_max.d[j] = 4;
-        }
+    //     nvinfer1::Dims dims_min(dims), dims_opt(dims), dims_max(dims);
+    //     for (int j = 0; j < nb_dims; ++j)
+    //     {
+    //         dims_min.d[j] = 2;
+    //         dims_opt.d[j] = 3;
+    //         dims_max.d[j] = 4;
+    //     }
 
-        profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMIN, dims_min);
-        profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kOPT, dims_opt);
-        profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMAX, dims_max);
-    }
-
+    //     profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMIN, dims_min);
+    //     profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kOPT, dims_opt);
+    //     profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMAX, dims_max);
+    // }
+    std::cout << "Loc11" << std::endl;
     engine.reset(builder->buildEngineWithConfig(*network, *config));
+    std::cout << "Loc12" << std::endl;
     context.reset(engine->createExecutionContext());
-    printNetwork(network);
+    std::cout << "Loc13" << std::endl;
 }
 
 int main(int argc, char **argv)
