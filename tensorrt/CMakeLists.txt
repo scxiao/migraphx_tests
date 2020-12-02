@@ -5,7 +5,7 @@ set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
 set (DEPS_FOLDER ${MIGRAPHX_FOLDER}/deps_rocblas2.7)
 #set (MIGRAPHX_BUILD  ${MIGRAPHX_FOLDER}/build_debug)
 set (MIGRAPHX_BUILD  ${MIGRAPHX_FOLDER}/build)
-#set (CMAKE_CXX_COMPILER /opt/rocm/bin/hcc)
+#set (CMAKE_CXX_COMPILER /usr/local/cuda/bin/nvcc)
 set (CMAKE_CXX_STANDARD 14)
 
 add_definitions(-DBLIBCXX_DEBUG)
@@ -23,7 +23,7 @@ include_directories(/workspace/TensorRT/include
 link_directories(/tensorrt/lib
                  /usr/local/cuda/lib64
                  /usr/local/lib)
-add_executable(test test_load_onnx.cpp)
+add_executable(test test_run_onnx.cpp)
 target_link_libraries(test nvonnxparser nvinfer cudart opencv_cudaarithm opencv_cudabgsegm opencv_cudawarping opencv_core opencv_cudabgsegm opencv_cudaarithm opencv_imgcodecs)
 
 #file(GLOB SRC_FILES "src/*.cpp")
