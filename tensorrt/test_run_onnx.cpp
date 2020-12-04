@@ -175,7 +175,6 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
     const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     TRTUniquePtr<nvinfer1::INetworkDefinition> network{builder->createNetworkV2(explicitBatch)};
     TRTUniquePtr<nvonnxparser::IParser> parser{nvonnxparser::createParser(*network, gLogger)};
-    // nvinfer1::IOptimizationProfile* profile = nullptr;
 
     // parse ONNX
     if (!parser->parseFromFile(model_path.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kINFO)))
@@ -190,34 +189,51 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
     {
         config->setFlag(nvinfer1::BuilderFlag::kFP16);
     }
-    // config->addOptimizationProfile(profile);
 
     builder->setMaxBatchSize(1);
-    // if (profile == nullptr)
-    // {
-    //     profile = builder->createOptimizationProfile();
-    // }
+    if (isDynamicShape(network))
+    {
+        nvinfer1::IOptimizationProfile* profile = nullptr;
+        profile = builder->createOptimizationProfile();
+        config->addOptimizationProfile(profile);
 
-    // int num_inputs = network->getNbInputs();
-    // for (int i = 0; i < num_inputs; ++i)
-    // {
-    //     auto input = network->getInput(i);
-    //     const std::string& input_name = input->getName();
-    //     nvinfer1::Dims dims = input->getDimensions();
-    //     int nb_dims = dims.nbDims;
+        int num_inputs = network->getNbInputs();
+        for (int i = 0; i < num_inputs; ++i)
+        {
+            auto input = network->getInput(i);
+            const std::string& input_name = input->getName();
+            nvinfer1::Dims dims = input->getDimensions();
+            int nb_dims = dims.nbDims;
+            std::cout << "i = " << i << "===============";
+            printDims(dims);
+            std::cout << std::endl;
 
-    //     nvinfer1::Dims dims_min(dims), dims_opt(dims), dims_max(dims);
-    //     for (int j = 0; j < nb_dims; ++j)
-    //     {
-    //         dims_min.d[j] = 2;
-    //         dims_opt.d[j] = 3;
-    //         dims_max.d[j] = 4;
-    //     }
+            nvinfer1::Dims dims_min(dims), dims_opt(dims), dims_max(dims);
+            for (int j = 0; j < nb_dims; ++j)
+            {
+                if (dims.d[j] == -1)
+                {
+                    dims_min.d[j] = 1;
+                    dims_opt.d[j] = 2;
+                    dims_max.d[j] = 3;
+                }
+            }
 
-    //     profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelctor::kMIN, dims_min);
-    //     profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kOPT, dims_opt);
-    //     profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMAX, dims_max);
-    // }
+            std::cout << "dims_min = ";
+            printDims(dims_min);
+            std::cout << std::endl;
+            std::cout << "dims_max = ";
+            printDims(dims_max);
+            std::cout << std::endl;
+            std::cout << "dims_opt = ";
+            printDims(dims_opt);
+            std::cout << std::endl;
+            profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMIN, dims_min);
+            profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kOPT, dims_opt);
+            profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMAX, dims_max);
+        }
+
+    }
 
     engine.reset(builder->buildEngineWithConfig(*network, *config));
     context.reset(engine->createExecutionContext());
@@ -291,8 +307,39 @@ std::vector<T> gen_input(const std::string& name, std::size_t elem_num)
     return std::move(vec);
 }
 
+nvinfer1::Dims tune_dynamic_dims(const nvinfer1::Dims& dims, int default_size)
+{
+    nvinfer1::Dims ret_dims(dims);
+
+    std::cout << "Dim_before_tune = ";
+    printDims(dims);
+    std::cout << std::endl;
+
+    int nb = dims.nbDims;
+    for (int i = 0; i < nb; ++i)
+    {
+        std::cout << "i = " << i << std::endl;
+        if (dims.d[i] == -1)
+        {
+            std::cout << "Here, default = " << default_size << std::endl;
+            ret_dims.d[i] = default_size;
+            std::cout << "dims.d[" << i << "] = " << ret_dims.d[i] << std::endl;
+        }
+    }
+
+    std::cout << "Dim_after_tune = ";
+    printDims(ret_dims);
+    std::cout << std::endl;
+
+    return ret_dims;
+}
+
 void malloc_nbbinding_buffer(const std::string &name, const nvinfer1::Dims& dims, nvinfer1::DataType type, bool is_input, void* &buffer)
 {
+    std::cout << "malloc, dim = ";
+    printDims(dims);
+    std::cout << std::endl;
+
     std::size_t size = getSizeByDim(dims);
     std::size_t binding_size = 0;
     if (type == nvinfer1::DataType::kINT8)
@@ -344,25 +391,23 @@ void malloc_nbbinding_buffer(const std::string &name, const nvinfer1::Dims& dims
 void copy_output_to_host(const std::string &name, const nvinfer1::Dims& dims, nvinfer1::DataType type, void* buffer)
 {
     std::size_t size = getSizeByDim(dims);
+    std::cout << "Output: ";
     if (type == nvinfer1::DataType::kINT8 or type == nvinfer1::DataType::kBOOL)
     {
         std::vector<int8_t> output(size);
         cudaMemcpy(output.data(), buffer, output.size() * sizeof(int8_t), cudaMemcpyDeviceToHost);
-        std::cout << "Output: ";
         print_vec(output);
     }
     else if (type == nvinfer1::DataType::kFLOAT)
     {
         std::vector<float> output(size);
         cudaMemcpy(output.data(), buffer, output.size() * sizeof(float), cudaMemcpyDeviceToHost);
-        std::cout << "Output: ";
         print_vec(output);
     }
     else if (type == nvinfer1::DataType::kINT32)
     {
         std::vector<int32_t> output(size);
         cudaMemcpy(output.data(), buffer, output.size() * sizeof(int32_t), cudaMemcpyDeviceToHost);
-        std::cout << "Output: ";
         print_vec(output);
     }
     else
@@ -392,24 +437,29 @@ int main(int argc, char **argv)
     std::vector<nvinfer1::Dims> input_dims;
     std::vector<nvinfer1::Dims> output_dims;
     std::vector<void*> buffers(engine->getNbBindings());
-
+    int default_size = 2;
     for (std::size_t i = 0; i < engine->getNbBindings(); ++i)
     {
+        std::cout << "i = " << i << "=============" << std::endl;
         auto&& name = engine->getBindingName(i);
         auto&& dims = engine->getBindingDimensions(i);
         auto&& type = engine->getBindingDataType(i);
         std::size_t binding_size = 1;
         bool is_input = engine->bindingIsInput(i);
-        malloc_nbbinding_buffer(name, dims, type, is_input, buffers[i]);
-        printDims(i, name, dims, is_input);
+        std::cout << "Loc1" << std::endl;
+        auto tuned_dims = tune_dynamic_dims(dims, default_size);
+        malloc_nbbinding_buffer(name, tuned_dims, type, is_input, buffers[i]);
+        std::cout << "Loc2" << std::endl;
+        context->setBindingDimensions(i, tuned_dims);
+        printDims(i, name, tuned_dims, is_input);
 
         if (is_input)
         {
-            input_dims.emplace_back(dims);
+            input_dims.emplace_back(tuned_dims);
         }
         else
         {
-            output_dims.emplace_back(dims);
+            output_dims.emplace_back(tuned_dims);
         }
     }
 
@@ -426,10 +476,11 @@ int main(int argc, char **argv)
         bool is_input = engine->bindingIsInput(i);
         auto&& name = engine->getBindingName(i);
         auto&& dims = engine->getBindingDimensions(i);
+        auto tuned_dims = tune_dynamic_dims(dims, default_size);
         auto&& type = engine->getBindingDataType(i);
         if (!is_input)
         {
-            copy_output_to_host(name, dims, type, buffers[i]);
+            copy_output_to_host(name, tuned_dims, type, buffers[i]);
         }
     }
 
