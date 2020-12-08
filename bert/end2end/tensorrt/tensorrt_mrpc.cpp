@@ -189,7 +189,7 @@ auto get_hash(const T& x)
     return std::hash<T>{}(x);
 }
 
-void parse_sentence(const std::string& sent, std::vector<int64_t>& vec_feature)
+void parse_sentence(const std::string& sent, std::vector<int>& vec_feature)
 {
     size_t pos = 0, pos_next;
     size_t index = 0;
@@ -199,12 +199,12 @@ void parse_sentence(const std::string& sent, std::vector<int64_t>& vec_feature)
         vec_feature.push_back(std::stoll(word_feature));
         pos = pos_next + 1;
     }
-    vec_feature.push_back(std::stoll(sent.substr(pos)));
+    vec_feature.push_back(std::stoi(sent.substr(pos)));
     vec_feature.push_back(102);
 }
 
 int parse_line(std::string& line, std::size_t sent_size, 
-        std::unordered_map<std::string, std::vector<int64_t>>& input_map)
+        std::unordered_map<std::string, std::vector<int>>& input_map)
 {
     auto& vec_feature = input_map["input.1"];
     auto& vec_id = input_map["input.3"];
@@ -246,11 +246,12 @@ int main(int argc, char **argv) {
     std::string model_path(argv[1]);
     parseOnnxModel(model_path, engine, context);
 
-    std::unordered_map<std::string, void*> map_name_buffers;
+    std::unordered_map<std::string, int> map_name_index;
     std::vector<void*> buffers(engine->getNbBindings());
     std::unordered_map<std::string, std::size_t> map_name_size;
 	std::unordered_map<std::string, std::size_t> map_name_elem_num;
     std::size_t batch_size = engine->getBindingDimensions(0).d[0];
+    std::cout << "Batch_size = " << batch_size << std::endl;
 
     // allocate buffer for input and output
     for (std::size_t i = 0; i < engine->getNbBindings(); ++i)
@@ -265,9 +266,8 @@ int main(int argc, char **argv) {
         std::cout << dims;
         std::string inout = is_input ? "input" : "output";
         std::cout << ", is " << inout << std::endl;
-        map_name_buffers[name] = (void *)nullptr;
-        auto size = malloc_nbbinding_buffer(dims, type, map_name_buffers[name]);
-        buffers.push_back(map_name_buffers.at(name));
+        map_name_index[name] = i;
+        auto size = malloc_nbbinding_buffer(dims, type, buffers[i]);
         map_name_size[name] = size;
 		map_name_elem_num[name] = getSizeByDim(dims);
     }
@@ -287,11 +287,11 @@ int main(int argc, char **argv) {
     high_resolution_clock::time_point t1 = high_resolution_clock::now();
     while (true)
     {
-        std::unordered_map<std::string, std::vector<int64_t>> input_map;
+        std::unordered_map<std::string, std::vector<int>> input_map;
         input_map["input.1"];
         input_map["input.3"];
         input_map["2"];
-        std::unordered_map<std::string, std::vector<int64_t>> sent_tokens;
+        std::unordered_map<std::string, std::vector<int>> sent_tokens;
         sent_tokens["input.1"];
         sent_tokens["input.3"];
         sent_tokens["2"];
@@ -327,7 +327,7 @@ int main(int argc, char **argv) {
 			bool is_input = engine->bindingIsInput(i); 
 			if (is_input)
             {
-                cudaMemcpy(map_name_buffers[name], sent_tokens[name].data(), map_name_size[name],
+                cudaMemcpy(buffers[map_name_index[name]], input_map[name].data(), map_name_size[name],
                         cudaMemcpyHostToDevice);
             }
 		}
@@ -342,10 +342,12 @@ int main(int argc, char **argv) {
 			if (!is_input)
             {
 				vec_output.resize(map_name_elem_num[name]);
-                cudaMemcpy(vec_output.data(), map_name_buffers[name], map_name_size[name],
+                std::cout << "elem_num = " << map_name_elem_num[name] << std::endl;
+                cudaMemcpy(vec_output.data(), buffers[map_name_index[name]], map_name_size[name],
                         cudaMemcpyDeviceToHost);
             }
 		}
+        std::cout << "vec_output_size = " << vec_output.size() << std::endl;
 
         for (std::size_t batch_no = 0; batch_no < batch_size; ++batch_no)
         {
