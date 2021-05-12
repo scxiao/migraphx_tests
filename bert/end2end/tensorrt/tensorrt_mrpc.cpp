@@ -141,13 +141,20 @@ void parseOnnxModel(const std::string& model_path, TRTUniquePtr<nvinfer1::ICudaE
     context.reset(engine->createExecutionContext());
 }
 
-
-std::unordered_map<nvinfer1::DataType, std::size_t> map_type_sizes =
-{{nvinfer1::DataType::kFLOAT, 4},
- {nvinfer1::DataType::kHALF, 2},
- {nvinfer1::DataType::kINT8, 1},
- {nvinfer1::DataType::kINT32, 4},
- {nvinfer1::DataType::kBOOL, 1}};
+std::size_t get_type_size(nvinfer1::DataType type)
+{
+    std::unordered_map<nvinfer1::DataType, std::size_t> map_type_sizes =
+    {{nvinfer1::DataType::kFLOAT, 4},
+     {nvinfer1::DataType::kHALF, 2},
+     {nvinfer1::DataType::kINT8, 1},
+     {nvinfer1::DataType::kINT32, 4},
+     {nvinfer1::DataType::kBOOL, 1}};
+    if (map_type_sizes.count(type) == 0)
+    {
+        std::cerr << "Data type not supported!" << std::endl;
+        std::abort();
+    }
+}
 
 std::unordered_map<nvinfer1::DataType, std::string> map_type_names =
 {{nvinfer1::DataType::kFLOAT, "float"},
@@ -170,13 +177,13 @@ std::size_t malloc_nbbinding_buffer(const nvinfer1::Dims& dims, const nvinfer1::
 {
     std::size_t elem_num = getSizeByDim(dims);
     std::size_t type_size = 1;
-	if (map_type_sizes.count(type) == 0)
+	if (sizes.count(type) == 0)
 	{
         std::cout << "Type does not exist!" << std::endl;
         std::abort();
     }
 
-    type_size = map_type_sizes.at(type);
+    type_size = get_type_size(type);
     auto size = elem_num * type_size;
     cudaMalloc(&buffer, size);
 
