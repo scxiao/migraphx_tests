@@ -1,5 +1,6 @@
 import onnx
 from onnx import version_converter, helper
+from onnxruntime.quantization import quantize_qat, QuantType
 import sys
 
 def main():
@@ -14,12 +15,11 @@ def main():
 
     print("Original graph = \n")
 #    print(onnx.helper.printable_graph(original_model))
-    converted_model = version_converter.convert_version(original_model, 8)
+    quantized_model = quantize_qat(model_path, out_file_path)
+    print("Quantized model = \n")
+    print(onnx.helper.printable_graph(quantized_model))
 
-    print("Converted graph = \n")
-    print(onnx.helper.printable_graph(converted_model))
-
-    onnx.save(converted_model, out_file_path)
+    #onnx.save(converted_model, out_file_path)
 
 if __name__ == "__main__":
     main()

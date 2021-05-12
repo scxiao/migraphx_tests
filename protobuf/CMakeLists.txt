@@ -3,7 +3,7 @@ project (Test_protobuf)
 
 
 #set (CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cget)
-set (CMAKE_PREFIX_PATH /home/scxiao/Workplace/projects/AMDMIGraphX/deps_rocm3.3)
+set (CMAKE_PREFIX_PATH /home/scxiao/Workplace/projects/MIGraph/deps_json)
 
 find_package(Protobuf REQUIRED)
 
@@ -16,7 +16,7 @@ add_library(onnx-proto STATIC ${PROTO_SRCS})
 target_include_directories(onnx-proto SYSTEM PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${PROTOBUF_INCLUDE_DIR})
 target_compile_options(onnx-proto PRIVATE -w)
 target_link_libraries(onnx-proto PRIVATE ${PROTOBUF_LIBRARY})
-set_target_properties(onnx-proto PROPERTIES POSITION_INDEPENDENT_CODE On)
+#set_target_properties(onnx-proto PROPERTIES POSITION_INDEPENDENT_CODE On)
 
 set(test_examples parse_onnx.cpp)
 

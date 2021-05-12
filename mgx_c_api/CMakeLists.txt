@@ -18,7 +18,7 @@ file(GLOB util_HDR "*.hpp")
 list(REMOVE_ITEM util_SRC ${test_SRC})
 add_library(utils SHARED ${util_SRC})
 
-set(test_examples test_load_onnx.cpp)
+set(test_examples test_load_onnx.cpp test_run_onnx.cpp)
 
 foreach(filepath_name ${test_examples})
     get_filename_component(src_name ${filepath_name} NAME)

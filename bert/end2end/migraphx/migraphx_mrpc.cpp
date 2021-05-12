@@ -1,6 +1,6 @@
 #include <iostream>
 #include <vector>
-#include <ctime>
+#include <chrono>
 #include <unordered_map>
 #include <string>
 #include <fstream>

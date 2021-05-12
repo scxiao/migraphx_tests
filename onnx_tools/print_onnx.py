@@ -23,8 +23,8 @@ def get_inputs(model):
     return list_inputs
 
 def print_model_info(original_model):
-#print("model = {}".format(original_model.graph))
-    print(onnx.helper.printable_graph(original_model.graph))
+#    print("model = {}".format(original_model.graph))
+    print("graph = {}".format(onnx.helper.printable_graph(original_model.graph)))
     print("IR_version = {}".format(original_model.ir_version))
     print("Model_version = {}".format(original_model.model_version))
     print("len = {}".format(len(original_model.opset_import)))

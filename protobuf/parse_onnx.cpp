@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 using node_map = std::unordered_map<std::string, onnx::NodeProto>;
-void print_identification(int n)
+void print_indent(int n)
 {
     for (int m = 0; m < n; m++)
         std::cout << "        ";
@@ -19,7 +19,7 @@ void parse_graph(const onnx::GraphProto& graph, int n)
     std::cout << "Initializer names = " << std::endl;
     for(auto&& f : graph.initializer())
     {
-        print_identification(n);
+        print_indent(n);
         std::cout << "\t" << f.name() << std::endl;
     }
 
@@ -27,16 +27,16 @@ void parse_graph(const onnx::GraphProto& graph, int n)
     for(auto&& input : graph.input())
     {
         const std::string& name = input.name();
-        print_identification(n);
+        print_indent(n);
         std::cout << "\t " << name << std::endl;
     }
 
-    print_identification(n);
+    print_indent(n);
     std::cout << "Node_info = " << std::endl;
     int i = 0;
     for(auto&& node : graph.node())
     {
-        print_identification(n);
+        print_indent(n);
         std::cout << std::setw(8) << i++;
         std::cout << "\t" << node.op_type() << std::endl;
         if (node.op_type() == "Loop")
@@ -44,7 +44,7 @@ void parse_graph(const onnx::GraphProto& graph, int n)
 			for(auto&& attr : node.attribute())
 			{
                 auto&& sub_graph = attr.g();
-                print_identification(n);
+                print_indent(n);
                 std::cout << "n = " << n << ", sub_graph = " << std::endl;
                 parse_graph(sub_graph, n + 1);
 			}

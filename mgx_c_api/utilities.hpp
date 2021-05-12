@@ -134,7 +134,9 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
     std::cout << std::endl;
 
     std::vector<int> indices = {2, 1, 2, 0, 1, 0};
-    std::vector<char> vec_int;
+    std::vector<std::vector<int>> vec_int;
+    std::vector<std::vector<char>> vec_char;
+    std::vector<std::vector<float>> vec_float;
     migraphx::program_parameters m;
     auto param_shapes = p.get_parameter_shapes();
     for (auto &&name : param_shapes.names())
@@ -146,15 +148,38 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
         {
             argu = migraphx::argument(s, indices.data());
         }
-        else if (s.type() == migraphx_shape_int32_type or
-            s.type() == migraphx_shape_int64_type)
+        else if (s.type() == migraphx_shape_int32_type)
         {
-            vec_int.resize(s.bytes(), 0);
-            argu = migraphx::argument(s, vec_int.data());
+            std::vector<int> vec(s.bytes()/sizeof(float), 2);
+            vec_int.push_back(vec);
+            argu = migraphx::argument(s, vec_int.back().data());
+        }
+        else if (s.type() == migraphx_shape_bool_type)
+        {
+            std::vector<char> vec(s.bytes(), 1);
+            vec_char.push_back(vec);
+            argu = migraphx::argument(s, vec_char.back().data());
+        }
+        else if (s.type() == migraphx_shape_float_type)
+        {   
+            std::vector<float> vec(s.bytes()/sizeof(float));
+            std::iota(vec.begin(), vec.end(), 1);
+            vec_float.push_back(vec);
+            //argu = migraphx::argument(s, vec_float.back().data());
+            argu = migraphx::argument::generate(s, get_hash(std::string(name)));
+            float* ptr = (float*)argu.data();
+            std::cout << "name = {";
+            for (int i = 0; i < s.bytes() / 4; ++i)
+            {
+                if (i > 0) std::cout << ", ";
+                std::cout << ptr[i];
+            }
+            std::cout << "}" << std::endl;
         }
         else
         {
-            argu = migraphx::argument::generate(s, get_hash(std::string(name)));
+            std::cout << "type not supported" << std::endl;
+            std::abort();
         }
         m.add(name, argu);
     }

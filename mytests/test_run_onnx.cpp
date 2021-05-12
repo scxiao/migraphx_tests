@@ -11,59 +11,7 @@
 #include <migraphx/onnx.hpp>
 #include "utilities.hpp"
 #include "cmd_options.hpp"
-
-std::string process_one_line(std::string line, std::vector<std::size_t>& dims)
-{
-    std::cout << "line = " << line << std::endl;
-    std::size_t start_pos = 0;
-    auto pos = line.find(' ', start_pos);
-    auto name = line.substr(start_pos, pos);
-    start_pos = line.find('{', pos + 1);
-    pos = line.find('}', start_pos + 1);
-    auto dim_str = line.substr(start_pos + 1, pos - start_pos - 1);
-    dims.clear();
-    start_pos = 0;
-    while (true)
-    {
-        pos = dim_str.find(',', start_pos);
-        if (pos == std::string::npos)
-            break;
-        
-        auto sub_str = dim_str.substr(start_pos, pos - start_pos);
-        std::cout << "sub_str = " << sub_str << std::endl;
-        dims.push_back(std::stoi(sub_str));
-        start_pos = pos + 1;
-    }
-    dims.push_back(std::stoi(dim_str.substr(start_pos)));
-    
-    return name;
-}
-
-migraphx::onnx_options load_option_file(std::string file)
-{
-    migraphx::onnx_options options;
-    options.print_program_on_error = true;
-    std::ifstream ifs(file);
-    if (!ifs.is_open())
-    {
-        return options;
-    }
-
-    std::string line;
-    while (std::getline(ifs, line))
-    {
-        if (line.empty())
-            break;
-
-        std::vector<std::size_t> dims;
-        auto name = process_one_line(line, dims);
-        options.map_input_dims[name] = dims;
-    }
-
-
-    return options;
-}
-
+#include "read_shape.hpp"
 
 migraphx::program load_onnx_file(std::string file_name, migraphx::onnx_options& options) {
     //auto prog = migraphx::parse_onnx(file_name, options);
@@ -98,9 +46,9 @@ migraphx::program load_onnx_file(std::string file_name, migraphx::onnx_options& 
 
 migraphx::target get_target(std::string name)
 {
-    if (name == "cpu")
+    if (name == "ref")
     {
-        return migraphx::cpu::target{};
+        return migraphx::ref::target{};
     }
     else
     {
@@ -126,10 +74,13 @@ void print_args(migraphx::argument& arg, std::ofstream& ofs)
 int main(int argc, char **argv) {
     if (argc < 2) {
         std::cout << "Usage: " << argv[0] << " onnx_file" << std::endl;
-        std::cout << "\t-d      cpu/gpu (default) /both" << std::endl;
-        std::cout << "\t-q      fp16/int8/no_quant(default)" << std::endl;
-        std::cout << "\t-options input_shape_file" << std::endl;
-        std::cout << "\t-rm     num_ins" << std::endl;
+        std::cout << "\t-d         ref/gpu (default) /both" << std::endl;
+        std::cout << "\t-q         fp16/int8/no_quant(default)" << std::endl;
+        std::cout << "\t-options   input_shape_file" << std::endl;
+        std::cout << "\t-iter      number of runs (default 1)" << std::endl;
+        std::cout << "\t-rm        num_ins" << std::endl;
+        std::cout << "\t-off_cp    set offload copy" << std::endl; 
+        std::cout << "             (default: 0, no offload_copy)" << std::endl;
 
         return 0;
     }
@@ -139,7 +90,7 @@ int main(int argc, char **argv) {
     if (dev_name != nullptr)
     {
         std::string dev_str(dev_name);
-        if (dev_str == "cpu" or dev_str == "both")
+        if (dev_str == "ref" or dev_str == "both")
         {
             device_name = dev_str;
         }
@@ -159,6 +110,12 @@ int main(int argc, char **argv) {
         num_ins = std::atoi(num_ins_input);
     }
 
+    int iter_num = 1;
+    char *num_iterations = getCmdOption(argv + 2, argv + argc, "-iter");
+    if (num_iterations != nullptr)
+    {
+        iter_num = std::atoi(num_iterations);
+    }
 
     migraphx::onnx_options options;
     char *option_input_file = getCmdOption(argv + 2, argv + argc, "-options");
@@ -166,18 +123,28 @@ int main(int argc, char **argv) {
     {
         options = load_option_file(std::string(option_input_file));
     }
+
+    // whether use offload copy for parameters
+    bool offload_copy = false;
+    char *use_offload_copy = getCmdOption(argv + 2, argv + argc, "-off_cp");
+    if (use_offload_copy != nullptr)
+    {
+        offload_copy = std::atoi(use_offload_copy);
+    }
+
     auto prog = load_onnx_file(argv[1], options);
     if (num_ins > 0)
     {
         std::cout << "prog_size = " << prog.size() << std::endl;
         std::cout << "Removed the last " << num_ins << " instructions ........." << std::endl;
-        auto ins_end = prog.end();
+        auto ins_end = prog.get_main_module()->end();
         auto ins_start = ins_end;
         for (int i = 0; i < num_ins; ++i)
         {
             ins_start = std::prev(ins_start);
         }
-        prog.remove_instructions(ins_start, ins_end);
+        //prog.remove_instructions(ins_start, ins_end);
+        prog.get_main_module()->remove_instructions(ins_start, ins_end);
 
         std::cout << "Program after removing instructions = " << std::endl;
         std::cout << prog << std::endl;
@@ -185,7 +152,7 @@ int main(int argc, char **argv) {
     }
 
     std::string target_name = "gpu";
-    if (device_name == "cpu")
+    if (device_name == "ref")
     {
         target_name = device_name;
     }
@@ -202,7 +169,7 @@ int main(int argc, char **argv) {
     {
         std::cout << "int8 quantization .............." << std::endl;
         auto m = create_param_map(prog);
-        std::vector<migraphx::program::parameter_map> cali = {m};
+        std::vector<parameter_map> cali = {m};
         migraphx::quantize_int8(prog, t, cali);
     }
     else
@@ -212,28 +179,34 @@ int main(int argc, char **argv) {
 
     std::cout << "quant_prog = " << std::endl;
     std::cout << prog << std::endl;
+    run_options roptions;
+    roptions.offload_copy = offload_copy;
+    roptions.t = t;
 
     if (device_name == "both")
     {
-        std::vector<std::vector<float>> cpu_res, gpu_res;
-        run_prog(prog, migraphx::cpu::target{}, cpu_res);
-        run_prog(prog, migraphx::gpu::target{}, gpu_res);
-        if (cpu_res.size() != gpu_res.size())
+        std::vector<std::vector<float>> ref_res, gpu_res;
+        roptions.iter_num = 0;
+        run_prog(prog, ref_res, roptions);
+        roptions.iter_num = iter_num;
+        run_prog(prog, gpu_res, roptions);
+        if (ref_res.size() != gpu_res.size())
         {
-            std::cout << "CPU and GPU have different number of outputs! " << cpu_res.size() << " != " << gpu_res.size() << std::endl;
+            std::cout << "CPU and GPU have different number of outputs! " << ref_res.size() << " != " << gpu_res.size() << std::endl;
         }
-        std::size_t res_num = cpu_res.size();
+        std::size_t res_num = ref_res.size();
         bool ret2 = true;
         for (std::size_t i = 0; i < res_num; ++i)
         {
-            ret2 = ret2 and compare_results(cpu_res[i], gpu_res[i]);
+            ret2 = ret2 and compare_results(ref_res[i], gpu_res[i]);
         }
         std::cout << (ret2 ? "PASSED!" : "FAILED") << std::endl;
     }
     else
     {
         std::vector<std::vector<float>> result;
-        run_prog(prog, t, result);
+        roptions.iter_num = iter_num;
+        run_prog(prog, result, roptions);
         //std::cout << "result = " << std::endl;
         //print_res(result);
     }

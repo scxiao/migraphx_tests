@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
         std::cout << "Usage: " << argv[0] << "[options]" << std::endl;
         std::cout << "options:" << std::endl;
         std::cout << "\t-s       shape_info_file" << std::endl;
-        std::cout << "\t-d       cpu/gpu(default)/both" << std::endl;
+        std::cout << "\t-d       ref/gpu(default)/both" << std::endl;
         std::cout << "\t-q       fp16/int8/no_quant(default)" << std::endl;
         return 0;
     }
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     if (dev_name != nullptr)
     {
         std::string dev_str(dev_name);
-        if (dev_str == "cpu" or dev_str == "both")
+        if (dev_str == "ref" or dev_str == "both")
         {
             device_name = dev_str;
         }
@@ -59,19 +59,14 @@ int main(int argc, char **argv) {
     }
 
     migraphx::program prog = load_onnx_file(argv[1], options);
-    migraphx::module mm = prog.get_main_module();
     std::string target_name = "gpu";
-    if (device_name == "cpu")
+    if (device_name == "ref")
     {
         target_name = device_name;
     }
     auto t = get_target(target_name);
-    mm.compile(t);
+    prog.compile(t);
     std::cout << "module = " << std::endl;
-    mm.print();
-    std::cout << std::endl;
-
-    std::cout << "prog = " << std::endl;
     prog.print();
     std::cout << std::endl;
 

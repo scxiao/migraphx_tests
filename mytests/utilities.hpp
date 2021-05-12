@@ -10,12 +10,14 @@
 #include <migraphx/operators.hpp>
 #include <migraphx/generate.hpp>
 #include <migraphx/instruction.hpp>
-#include <migraphx/cpu/target.hpp>
+#include <migraphx/ref/target.hpp>
 #include <migraphx/gpu/target.hpp>
 #include <migraphx/gpu/hip.hpp>
 #include <migraphx/manage_ptr.hpp>
 #include <migraphx/type_name.hpp>
 #include "test.hpp"
+
+using parameter_map = migraphx::parameter_map;
 
 template<typename T>
 void print_res(const T& res)
@@ -51,24 +53,24 @@ migraphx::argument gen_argument(migraphx::shape s, unsigned long seed)
 }
 
 template<class T>
-void run_cpu(migraphx::program p, std::vector<T> &resData)
+void run_ref(migraphx::program p, std::vector<T> &resData)
 {
-    p.compile(migraphx::cpu::target{});
+    p.compile(migraphx::ref::target{});
 
-    migraphx::program::parameter_map m;
+    parameter_map m;
     for (auto &&x : p.get_parameter_shapes())
     {
         //auto &&argu = gen_argument(x.second, get_hash(x.first));
         auto &&argu = migraphx::generate_argument(x.second, get_hash(x.first));
         m[x.first] = argu;
-        //std::cout << "cpu_arg = " << argu << std::endl;
+        //std::cout << "ref_arg = " << argu << std::endl;
     }
     auto result = p.eval(m).back();
     //auto result = p.eval(m);
     result.visit([&](auto output) { resData.assign(output.begin(), output.end()); });
 
-    std::cout << "cpu output_shape = " << result.get_shape() << std::endl;
-    std::cout << "cpu res = " << std::endl;
+    std::cout << "ref output_shape = " << result.get_shape() << std::endl;
+    std::cout << "ref res = " << std::endl;
     print_res(resData);
     std::cout << std::endl;
 }
@@ -78,7 +80,7 @@ void run_gpu(migraphx::program p, std::vector<T> &resData)
 {
     p.compile(migraphx::gpu::target{});
 
-    migraphx::program::parameter_map m;
+    parameter_map m;
     for (auto &&x : p.get_parameter_shapes())
     {
         std::cout << "gpu input: " << x.first << "\'shape = " << x.second << std::endl;
@@ -103,20 +105,34 @@ void run_gpu(migraphx::program p, std::vector<T> &resData)
 }
 
 
-void print_vec(std::vector<float>& vec, std::size_t column_size)
+template<class T>
+void print_vec(std::ostream& os, const std::vector<T>& vec, std::size_t column_size)
 {
     for (std::size_t i = 0; i < vec.size(); ++i)
     {
-        std::cout << vec[i] << "\t";
+        os << vec[i] << "\t";
         if ((i + 1) % column_size == 0)
-            std::cout << std::endl;
+            os << std::endl;
     }
-    std::cout << std::endl;
+    os << std::endl;
 }
 
-migraphx::program::parameter_map create_param_map(migraphx::program& p)
+template<class T>
+void print_vec(std::vector<T>& vec, std::size_t column_size)
 {
-    migraphx::program::parameter_map m;
+    print_vec(std::cout, vec, column_size);
+}
+
+
+template<class T>
+std::ostream& operator << (std::ostream& os, const std::vector<T>& vec)
+{
+    print_vec(os, vec, 8);
+}
+
+parameter_map create_param_map(migraphx::program& p)
+{
+    parameter_map m;
     for (auto&& x : p.get_parameter_shapes())
     {
         if (x.second.type() == migraphx::shape::int32_type or
@@ -134,20 +150,36 @@ migraphx::program::parameter_map create_param_map(migraphx::program& p)
     return m;
 }
 
+using milliseconds = std::chrono::duration<double, std::milli>;
+
+struct run_options {
+    int iter_num = 0;
+    migraphx::target t;
+    bool offload_copy = false;
+
+    //run_options(int n_iter, const migraphx::target& tg, bool ol_cp) : 
+    //    iter_num(n_iter), t(tg), offload_copy(ol_cp) {}
+    //run_options(const migraphx::target& tg) : t(tg) { }
+};
+
 template <class T>
-void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::vector<T>> &resData)
+void run_prog(migraphx::program p, std::vector<std::vector<T>> &resData, const run_options& options)
 {
-    p.compile(t);
+    migraphx::compile_options c_options;
+    c_options.offload_copy = options.offload_copy;
+    auto& t = options.t;
+    p.compile(t, c_options);
     std::cout << "compiled program = " << std::endl;
     std::cout << p << std::endl;
-    std::string print_name = t.name();
+    
+    std::string print_name = options.t.name();
     if (print_name == "miopen")
     {
         print_name = "gpu";
     }
     std::cout << "run on " << print_name << "............." << std::endl << std::endl;
 
-    migraphx::program::parameter_map m;
+    parameter_map m;
     std::vector<int64_t> lens = {16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
     std::vector<int> indices = {2, 1, 2, 0, 1, 0};
     for (auto &&x : p.get_parameter_shapes())
@@ -156,19 +188,26 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
         if (x.first == "lengths")
         {
             auto&& argu = migraphx::argument(x.second, lens.data());
-            m[x.first] = t.copy_to(argu);
+            m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
         }
         else if (x.first == "indices")
         {
             auto&& argu = migraphx::argument(x.second, indices.data());
             //std::cout << "argu = " << argu << std::endl;
-            m[x.first] = t.copy_to(argu);
+            m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
         }
         else if (x.second.type() == migraphx::shape::int32_type or
             x.second.type() == migraphx::shape::int64_type)
         {
             auto&& argu = migraphx::fill_argument(x.second, 1);
-            m[x.first] = t.copy_to(argu);
+            std::cout << "argu_int = " << argu << std::endl;
+            m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
+        }
+        else if (x.second.type() == migraphx::shape::bool_type)
+        {
+            auto&& argu = migraphx::fill_argument(x.second, 0);
+            std::cout << "argu_bool = " << argu << std::endl;
+            m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
         }
         else
         {
@@ -177,24 +216,36 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
             std::cout << "argu = " << argu << std::endl;
             std::vector<float> vec_arg;
             argu.visit([&](auto v) { vec_arg.assign(v.begin(), v.end()); });
-            m[x.first] = t.copy_to(argu);
+            m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
         }
     }
 
-    std::cout << "Begin execution ...." << std::endl;
-    auto results = p.eval(m);
+    if (options.iter_num > 0)
+        p.eval(m);
+
+    std::cout << "Begin execution, " << options.iter_num << " iterations...." << std::endl;
+    auto start = std::chrono::steady_clock::now();
+    for (int i = 0; i < options.iter_num; ++i)
+    {
+        p.eval(m);
+        t.get_context().finish();
+    }
+    auto end = std::chrono::steady_clock::now();
+    auto milli_seconds = std::chrono::duration_cast<milliseconds>(end - start).count();
+    std::cout << "time per iteration = " << milli_seconds / options.iter_num << std::endl;
     std::cout << "End execution ...." << std::endl;
+    auto results = p.eval(m);
 
     std::size_t i = 0;
     for (auto&& result : results)
     {
-        auto cpu_res = t.copy_from(result);
+        auto ref_res = t.copy_from(result);
         std::vector<T> resTmp;
-        cpu_res.visit([&](auto output) { resTmp.assign(output.begin(), output.end()); });
-        std::cout << "Output_" << i << "_shape = " << cpu_res.get_shape() << std::endl;
+        ref_res.visit([&](auto output) { resTmp.assign(output.begin(), output.end()); });
+        std::cout << "Output_" << i << "_shape = " << ref_res.get_shape() << std::endl;
         std::cout << "Result_" << i << " = " << std::endl;
         resData.push_back(resTmp);
-        print_res(resTmp);
+        //print_res(resTmp);
         
         std::cout << std::endl;
         ++i;
@@ -203,14 +254,14 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
 
 
 template<typename T>
-bool compare_results(const T& cpu_res, const T& gpu_res)
+bool compare_results(const T& ref_res, const T& gpu_res)
 {
     bool passed = true;
-    std::size_t cpu_size = cpu_res.size();
+    std::size_t ref_size = ref_res.size();
     float fmax_diff = 0.0f;
     size_t max_index = 0;
-    for (std::size_t i = 0; i < cpu_size; i++) {
-        auto diff = fabs(cpu_res[i] - gpu_res[i]);
+    for (std::size_t i = 0; i < ref_size; i++) {
+        auto diff = fabs(ref_res[i] - gpu_res[i]);
         if (diff > 1.0e-3)
         {
             if (fmax_diff < diff) 
@@ -219,7 +270,7 @@ bool compare_results(const T& cpu_res, const T& gpu_res)
                 max_index = i;
                 passed = false;
             }
-            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
+            std::cout << "ref_result[" << i << "] (" << ref_res[i] << ") != gpu_result[" << i << "] (" <<
                 gpu_res[i] << ")!!!!!!" << std::endl;
         }
     }
@@ -227,7 +278,7 @@ bool compare_results(const T& cpu_res, const T& gpu_res)
     if (!passed)
     {
         size_t i = max_index;
-        std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
+        std::cout << "ref_result[" << i << "] (" << ref_res[i] << ") != gpu_result[" << i << "] (" <<
             gpu_res[i] << ")!!!!!!" << std::endl;
 
         std::cout << "max_diff = " << fmax_diff << std::endl;
@@ -236,14 +287,14 @@ bool compare_results(const T& cpu_res, const T& gpu_res)
     return passed;
 }
 
-bool compare_results(const std::vector<int>&cpu_res, const std::vector<int>& gpu_res)
+bool compare_results(const std::vector<int>&ref_res, const std::vector<int>& gpu_res)
 {
     bool passed = true;
-    std::size_t cpu_size = cpu_res.size();
-    for (std::size_t i = 0; i < cpu_size; i++) {
-        if (cpu_res[i] - gpu_res[i] != 0)
+    std::size_t ref_size = ref_res.size();
+    for (std::size_t i = 0; i < ref_size; i++) {
+        if (ref_res[i] - gpu_res[i] != 0)
         {
-            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
+            std::cout << "ref_result[" << i << "] (" << ref_res[i] << ") != gpu_result[" << i << "] (" <<
                 gpu_res[i] << ")!!!!!!" << std::endl;
             passed = false;
         }
@@ -252,14 +303,14 @@ bool compare_results(const std::vector<int>&cpu_res, const std::vector<int>& gpu
     return passed;
 }
 
-bool compare_results(const std::vector<int64_t>&cpu_res, const std::vector<int64_t>& gpu_res)
+bool compare_results(const std::vector<int64_t>&ref_res, const std::vector<int64_t>& gpu_res)
 {
     bool passed = true;
-    std::size_t cpu_size = cpu_res.size();
-    for (std::size_t i = 0; i < cpu_size; i++) {
-        if (cpu_res[i] - gpu_res[i] != 0)
+    std::size_t ref_size = ref_res.size();
+    for (std::size_t i = 0; i < ref_size; i++) {
+        if (ref_res[i] - gpu_res[i] != 0)
         {
-            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
+            std::cout << "ref_result[" << i << "] (" << ref_res[i] << ") != gpu_result[" << i << "] (" <<
                 gpu_res[i] << ")!!!!!!" << std::endl;
             passed = false;
         }

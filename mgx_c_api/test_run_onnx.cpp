@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
         std::cout << "Usage: " << argv[0] << " onnx_file [options]" << std::endl;
         std::cout << "options:" << std::endl;
         std::cout << "\t-s       shape_info_file" << std::endl;
-        std::cout << "\t-d       cpu/gpu(default)/both" << std::endl;
+        std::cout << "\t-d       ref/gpu(default)/both" << std::endl;
         std::cout << "\t-q       fp16/int8/no_quant(default)" << std::endl;
         return 0;
     }
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     if (dev_name != nullptr)
     {
         std::string dev_str(dev_name);
-        if (dev_str == "cpu" or dev_str == "both")
+        if (dev_str == "ref" or dev_str == "both")
         {
             device_name = dev_str;
         }
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
     migraphx::program prog = load_onnx_file(argv[1], options);
     std::string target_name = "gpu";
-    if (device_name == "cpu")
+    if (device_name == "ref")
     {
         target_name = device_name;
     }
@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
     {
         migraphx::program prog_g = migraphx::parse_onnx(argv[1]);
         std::vector<std::vector<float>> cpu_res, gpu_res;
-        run_prog(prog, migraphx::target("cpu"), cpu_res);
+        run_prog(prog, migraphx::target("ref"), cpu_res);
         run_prog(prog_g, migraphx::target("gpu"), gpu_res);
         if (cpu_res.size() != gpu_res.size())
         {
