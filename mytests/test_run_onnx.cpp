@@ -187,8 +187,10 @@ int main(int argc, char **argv) {
     {
         std::vector<std::vector<float>> ref_res, gpu_res;
         roptions.iter_num = 0;
+        roptions.t = migraphx::ref::target{};
         run_prog(prog, ref_res, roptions);
         roptions.iter_num = iter_num;
+        roptions.t = migraphx::gpu::target{};
         run_prog(prog, gpu_res, roptions);
         if (ref_res.size() != gpu_res.size())
         {
@@ -207,8 +209,8 @@ int main(int argc, char **argv) {
         std::vector<std::vector<float>> result;
         roptions.iter_num = iter_num;
         run_prog(prog, result, roptions);
-        //std::cout << "result = " << std::endl;
-        //print_res(result);
+        std::cout << "result = " << std::endl;
+        print_res(result);
     }
 
     return 0;

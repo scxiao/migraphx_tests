@@ -213,7 +213,7 @@ void run_prog(migraphx::program p, std::vector<std::vector<T>> &resData, const r
         {
             //auto&& argu = gen_argument(x.second, get_hash(x.first));
             auto&& argu = migraphx::generate_argument(x.second, get_hash(x.first));
-            std::cout << "argu = " << argu << std::endl;
+            // std::cout << "argu = " << argu << std::endl;
             std::vector<float> vec_arg;
             argu.visit([&](auto v) { vec_arg.assign(v.begin(), v.end()); });
             m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
@@ -245,7 +245,7 @@ void run_prog(migraphx::program p, std::vector<std::vector<T>> &resData, const r
         std::cout << "Output_" << i << "_shape = " << ref_res.get_shape() << std::endl;
         std::cout << "Result_" << i << " = " << std::endl;
         resData.push_back(resTmp);
-        //print_res(resTmp);
+        print_res(resTmp);
         
         std::cout << std::endl;
         ++i;

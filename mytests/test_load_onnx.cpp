@@ -51,11 +51,11 @@ void load_onnx_file(std::string file_name, migraphx::onnx_options options)
     print_output_shapes(p1);
     
 
-    //p1.compile(migraphx::ref::target{});
-    //std::cout << "After compiling on REF, program is: " << std::endl;
-    //std::cout << p1;
-    //print_param_shapes(p1);
-    //print_output_shapes(p1);
+    p1.compile(migraphx::ref::target{});
+    std::cout << "After compiling on REF, program is: " << std::endl;
+    std::cout << p1;
+    print_param_shapes(p1);
+    print_output_shapes(p1);
 
     prog.compile(migraphx::gpu::target{});
 
