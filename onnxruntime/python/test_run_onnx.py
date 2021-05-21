@@ -74,10 +74,19 @@ def wrapup_inputs(session, dim_val_dict, default_val):
     return input_data
 
 
-def write_tensor_to_file(data, out_dir, index, is_input):
+def write_tensor_to_file(data, filename):
     # convert numpy array to onnx tensor
     tensor = numpy_helper.from_array(data)
     data_str = tensor.SerializeToString()
+    file = open(filename, 'wb')
+    file.write(data_str)
+    file.close()
+
+
+def write_tensor_to_file(data, out_dir, index, is_input):
+    # convert numpy array to onnx tensor
+    # tensor = numpy_helper.from_array(data)
+    # data_str = tensor.SerializeToString()
     name_prefix = out_dir + '/'
     if not os.path.isdir(name_prefix):
         os.mkdir(name_prefix)
@@ -87,9 +96,30 @@ def write_tensor_to_file(data, out_dir, index, is_input):
         name_prefix = name_prefix + 'output_'
 
     filename = name_prefix + str(index) + '.pb'
-    file = open(filename, 'wb')
-    file.write(data_str)
-    file.close()
+    write_tensor_t_file(data, filename)
+
+#   file = open(filename, 'wb')
+#   file.write(data_str)
+#   file.close()
+
+
+
+#def write_tensor_to_file(data, out_dir, index, is_input):
+#    # convert numpy array to onnx tensor
+#    tensor = numpy_helper.from_array(data)
+#    data_str = tensor.SerializeToString()
+#    name_prefix = out_dir + '/'
+#    if not os.path.isdir(name_prefix):
+#        os.mkdir(name_prefix)
+#    if is_input:
+#        name_prefix = name_prefix + 'input_'
+#    else:
+#        name_prefix = name_prefix + 'output_'
+#
+#    filename = name_prefix + str(index) + '.pb'
+#    file = open(filename, 'wb')
+#    file.write(data_str)
+#    file.close()
 
 
 def write_inputs_to_files(input_data, out_dir):
