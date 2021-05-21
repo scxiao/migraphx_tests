@@ -129,6 +129,19 @@ def check_correctness(gold_outputs, outputs, rtol=1e-3, atol=1e-3):
     return ret
 
 
+def tune_input_shape(model, input_data):
+    input_data_keys = input_data.keys()
+    param_shapes = model.get_parameter_shapes()
+    input_shapes = {}
+    for name, s in param_shapes.items():
+        assert name in input_data_keys
+        data_shape = list(input_data[name].shape)
+        if not np.array_equal(data_shape, s.lens()):
+            input_shapes[name] = data_shape
+
+    return input_shapes
+
+
 def main():
     args = parse_args()
     test_loc = args.test_dir
@@ -157,6 +170,13 @@ def main():
         input_data = wrapup_inputs(io_folder, param_names)
         gold_output_data = read_outputs(io_folder, len(output_shapes))
         
+        # if input shape is different from model shape, reload and recompile
+        # model
+        input_shapes = tune_input_shape(model, input_data)
+        if not len(input_shapes) == 0:
+            model = migraphx.parse_onnx(model_path_name, map_input_dim=input_shapes)
+            model.compile(migraphx.get_target(target))
+
         # run the model and return outputs
         output_data = run_one_case(model, input_data)
     
