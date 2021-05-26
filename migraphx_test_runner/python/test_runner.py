@@ -40,26 +40,6 @@ def get_model_name(dir_name):
     return ''
 
 
-def run_model(model, target, inputs):
-    model.compile(migraphx.get_target(target))
-    params = {}
-    args = []
-    for key, value in model.get_parameter_shapes().items():
-        print("Parameter {} -> {}".format(key, value))
-        hash_val = hash(key) % (2 ** 32 - 1)
-        np.random.seed(hash_val)
-        args.append(np.random.randn(value.elements()).astype(np.float16).reshape(value.lens()))
-        params[key] = migraphx.argument(args[-1])
-
-        result = np.array(model.run(params)[-1])
-
-    print("")
-    print("Result = \n{}".format(result))
-    print("")
-
-    return result
-
-
 def read_pb_file(filename):
     try:
         pfile = open(filename, 'rb')
@@ -174,7 +154,7 @@ def main():
         # model
         input_shapes = tune_input_shape(model, input_data)
         if not len(input_shapes) == 0:
-            model = migraphx.parse_onnx(model_path_name, map_input_dim=input_shapes)
+            model = migraphx.parse_onnx(model_path_name, map_input_dims=input_shapes)
             model.compile(migraphx.get_target(target))
 
         # run the model and return outputs
