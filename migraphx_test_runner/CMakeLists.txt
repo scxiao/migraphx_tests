@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project (migraphx_test_runner)
 
-#add_definitions(-D__HIP_PLATFORM_HCC__)
+add_definitions(-D__HIP_PLATFORM_HCC__)
 
 set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
 #set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/MIGraph)
@@ -16,6 +16,7 @@ set (CMAKE_PREFIX_PATH /home/scxiao/Workplace/projects/MIGraph/deps_json)
 find_package(Protobuf REQUIRED)
 
 include_directories(${MIGRAPHX_FOLDER}/src/api/include
+                    /opt/rocm-4.1.0/include
                     ${DEPS_FOLDER}/include)
 link_directories(${MIGRAPHX_BUILD}/lib
                  ${DEPS_FOLDER}/lib)

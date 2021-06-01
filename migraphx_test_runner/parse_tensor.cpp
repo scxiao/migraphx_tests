@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <unordered_map>
 #include <migraphx/migraphx.hpp>
-// #include <hip/hip_fp16.h>
+#include <hip/hip_fp16.h>
 #include <cassert>
 #include "parse_tensor.hpp"
 
@@ -83,7 +83,7 @@ migraphx_shape_datatype_t get_type(int dtype)
     case 6: return migraphx_shape_int32_type;
     case 7: return migraphx_shape_int64_type;
     case 9: return migraphx_shape_bool_type;
-    // case 10: return migraphx_shape_half_type;
+    case 10: return migraphx_shape_half_type;
     case 11: return migraphx_shape_double_type;
     case 12: return migraphx_shape_uint32_type;
     case 13: return migraphx_shape_uint64_type;
@@ -159,16 +159,16 @@ migraphx::argument parse_tensor(const onnx::TensorProto& t)
         std::vector<uint64_t> data(t.uint64_data().begin(), t.uint64_data().end());
         return create_argument(migraphx_shape_uint64_type, dims, data);
     }
-    // case onnx::TensorProto::FLOAT16:
-    // {
-    //     std::vector<uint16_t> data_uint16(t.int32_data().begin(), t.int32_data().end());
-    //     std::vector<half> data_half;
-    //     std::transform(data_uint16.begin(),
-    //                    data_uint16.end(),
-    //                    std::back_inserter(data_half),
-    //                    [](uint16_t raw_val) { return *reinterpret_cast<half*>(&raw_val); });
-    //     return create_argument(migraphx_shape_half_type, dims, data_half);
-    // }
+    case onnx::TensorProto::FLOAT16:
+    {
+        std::vector<uint16_t> data_uint16(t.int32_data().begin(), t.int32_data().end());
+        std::vector<half> data_half;
+        std::transform(data_uint16.begin(),
+                       data_uint16.end(),
+                       std::back_inserter(data_half),
+                       [](uint16_t raw_val) { return *reinterpret_cast<half*>(&raw_val); });
+        return create_argument(migraphx_shape_half_type, dims, data_half);
+    }
     case onnx::TensorProto::DOUBLE:
     {
         std::vector<double> data(t.double_data().begin(), t.double_data().end());

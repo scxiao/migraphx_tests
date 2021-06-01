@@ -12,7 +12,7 @@ std::unordered_map<std::string, migraphx::argument> wrapup_input_arguments(const
     std::size_t i = 0;
     for (const auto& name : param_names)
     {
-        std::string pb_file_name = test_case + "input_" + std::to_string(i) + ".pb";
+        std::string pb_file_name = test_case + "/input_" + std::to_string(i) + ".pb";
         results[std::string(name)] = parse_pb_file(pb_file_name);
     }
 
@@ -38,8 +38,16 @@ migraphx::arguments run_one_case(const std::unordered_map<std::string, migraphx:
     migraphx::program_parameters m;
     for (auto&& name : param_shapes.names())
     {
-        assert(inputs.count(std::string(name)) > 0);
-        m.add(name, inputs.at(name));
+        std::cout << "param_name = " << name << std::endl;
+        if (inputs.count(std::string(name)) > 0)
+        {
+            m.add(name, inputs.at(name));
+        }
+        else
+        {
+            auto s = param_shapes[name];
+            m.add(name, migraphx::argument::generate(s, 0));
+        }
     }
 
     return p.eval(m);
@@ -70,7 +78,7 @@ int main(int argc, char **argv)
     auto out_shapes = p.get_output_shapes();
     migraphx_compile_options options;
     options.offload_copy = true;
-    p.compile(migraphx::target(target.c_str()));
+    p.compile(migraphx::target(target.c_str()), options);
 
     auto model_name = get_path_last_part(model_path_name);
     auto test_cases = get_test_cases(argv[1]);
@@ -93,10 +101,10 @@ int main(int argc, char **argv)
             if (gold != output)
             {
                 std::cout << "Expected output:" << std::endl;
-                // std::cout << gold << std::endl;
+                std::cout << gold << std::endl;
                 std::cout << "..." << std::endl;
                 std::cout << "Actual output:" << std::endl;
-                // std::cout << output << std::endl;
+                std::cout << output << std::endl;
                 correct = false;
             }
         }

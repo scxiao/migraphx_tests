@@ -7,7 +7,8 @@
 #include <vector>
 #include <numeric>
 #include <cmath>
-
+#include <unordered_map>
+#include <hip/hip_fp16.h>
 #include <migraphx/migraphx.hpp>
 
 template<typename T>
@@ -28,31 +29,157 @@ auto get_hash(const T& x)
     return std::hash<T>{}(x);
 }
 
-// void print_vec(std::vector<float>& vec, std::size_t column_size)
-// {
-//     for (std::size_t i = 0; i < vec.size(); ++i)
-//     {
-//         std::cout << vec[i] << "\t";
-//         if ((i + 1) % column_size == 0)
-//             std::cout << std::endl;
-//     }
-//     std::cout << std::endl;
-// }
-
 template<class T>
-std::ostream& operator << (std::ostream& os, const std::vector<T>& dims)
+void print_vec(std::ostream& os, const std::vector<T>& vec, std::size_t column_size)
 {
     os << "{";
-    for (auto it = dims.begin(); it != dims.end(); ++it)
+    if (vec.size() <= 8 * column_size)
     {
-        if (it != dims.begin())
+        for (std::size_t i = 0; i < vec.size(); ++i)
         {
-            os << ", ";
+            if (i == vec.size() - 1) os << vec[i];
+            else os << vec[i] << ", ";
+            if ((i + 1) % column_size == 0)
+            {
+                os << std::endl;
+            }
         }
-        os << *it;
     }
-    os << "}" << std::endl;
+    else
+    {
+        for (std::size_t i = 0; i < 4 * column_size; ++i)
+        {
+            os << vec[i] << ", ";
+            if ((i + 1) % column_size == 0)
+            {
+                os << std::endl;
+            }
+        }
+        os << "..." << std::endl;
+        std::size_t offset = vec.size() - 4 * column_size;
+        for (std::size_t i = 0; i < 4 * column_size; ++i)
+        {
+            if (i == vec.size() - 1) os << vec[i];
+            else os << vec[i] << ", ";
+            if ((i + 1) % column_size == 0)
+            {
+                os << std::endl;
+            }
+        }
+    }
+    os << "}";
+}
 
+std::string type_name(migraphx_shape_datatype_t type)
+{
+    std::unordered_map<migraphx_shape_datatype_t, std::string> type_name = 
+    {
+        {migraphx_shape_float_type, "float"},
+        {migraphx_shape_half_type, "half"},
+        {migraphx_shape_double_type, "double"},
+        {migraphx_shape_int32_type, "int32_t"},
+        {migraphx_shape_int64_type, "int64_t"},
+        {migraphx_shape_int8_type, "int8_t"},
+        {migraphx_shape_uint32_type, "uint32_t"},
+        {migraphx_shape_uint64_type, "uint64_t"},
+        {migraphx_shape_uint8_type, "uint8_t"},
+        {migraphx_shape_bool_type, "bool"},
+        {migraphx_shape_uint16_type, "uin16_t"},
+        {migraphx_shape_int16_type, "int16_t"}
+    };
+
+    if (type_name.count(type) == 0)
+    {
+        std::cout << "Type " + std::to_string(type) + " does not exist!" << std::endl;
+    }
+
+    return type_name[type];
+}
+
+template<class T>
+std::ostream& operator << (std::ostream& os, const std::vector<T>& vec)
+{
+    print_vec(os, vec, 8);
+    return os;
+}
+
+void print_argument(std::ostream& os, const migraphx::argument& arg)
+{
+    auto s = arg.get_shape();
+    auto lens = s.lengths();
+    auto elem_num = std::accumulate(lens.begin(), lens.end(), 1, std::multiplies<size_t>());
+    migraphx_shape_datatype_t type = s.type();
+    std::cout << "type = " << type_name(type) << ", lens = " << s.lengths() << std::endl;
+    if (type == migraphx_shape_float_type)
+    {
+        float *ptr = reinterpret_cast<float*>(arg.data());
+        std::vector<float> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else if (type == migraphx_shape_half_type)
+    {
+        half *ptr = reinterpret_cast<half*>(arg.data());
+        std::vector<half> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else if (type == migraphx_shape_double_type)
+    {
+        double *ptr = reinterpret_cast<double*>(arg.data());
+        std::vector<double> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else if (type == migraphx_shape_int32_type)
+    {
+        int *ptr = reinterpret_cast<int*>(arg.data());
+        std::vector<int> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else if (type == migraphx_shape_int64_type)
+    {
+        int64_t *ptr = reinterpret_cast<int64_t*>(arg.data());
+        std::vector<int64_t> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else if (type == migraphx_shape_int8_type)
+    {
+        int8_t *ptr = reinterpret_cast<int8_t*>(arg.data());
+        std::vector<int8_t> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else if (type == migraphx_shape_uint32_type)
+    {
+        uint32_t *ptr = reinterpret_cast<uint32_t*>(arg.data());
+        std::vector<int32_t> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else if (type == migraphx_shape_uint64_type)
+    {
+        uint64_t *ptr = reinterpret_cast<uint64_t*>(arg.data());
+        std::vector<uint64_t> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else if (type == migraphx_shape_uint8_type)
+    {
+        uint8_t *ptr = reinterpret_cast<uint8_t*>(arg.data());
+        std::vector<uint8_t> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else if (type == migraphx_shape_bool_type)
+    {
+        bool *ptr = reinterpret_cast<bool*>(arg.data());
+        std::vector<bool> data(ptr, ptr + elem_num);
+        os << data;
+    }
+    else
+    {
+        std::cout << "Type not support" << std::endl;
+        std::abort();
+    }
+}
+
+std::ostream& operator << (std::ostream& os, const migraphx::argument& arg)
+{
+    print_argument(os, arg);
     return os;
 }
 
