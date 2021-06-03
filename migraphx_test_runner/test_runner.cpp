@@ -53,6 +53,29 @@ static migraphx::arguments run_one_case(const std::unordered_map<std::string, mi
     return p.eval(m);
 }
 
+static bool tune_param_shape(const migraphx::program& p, const std::unordered_map<std::string, migraphx::argument>& inputs, 
+                                                migraphx::onnx_options& options)
+{
+    bool ret = false;
+    auto param_shapes = p.get_parameter_shapes();
+    for(const auto& name : param_shapes.names())
+    {
+        std::string nm(name);
+        if (inputs.count(nm) > 0)
+        {
+            auto param_s = param_shapes[name];
+            auto data_s = inputs.at(nm).get_shape();
+            if (not compare_shapes(param_s, data_s))
+            {
+                options.set_input_parameter_shape(nm, data_s.lengths());
+                ret = true;
+            }
+        }
+    }
+
+    return ret;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2)
@@ -73,8 +96,7 @@ int main(int argc, char **argv)
     std::cout << "Run test \"" << argv[1] << "\" on \"" << target << "\":" << std::endl << std::endl;
 
     auto model_path_name = get_model_name(argv[1]);
-    migraphx::onnx_options parse_options;
-    migraphx::program p = migraphx::parse_onnx(model_path_name.c_str(), parse_options);
+    migraphx::program p = migraphx::parse_onnx(model_path_name.c_str());
     auto param_names = p.get_parameter_names();
     std::vector<std::string> pnames;
     std::transform(param_names.begin(), param_names.end(), std::back_inserter(pnames), [](auto str) {
@@ -95,6 +117,13 @@ int main(int argc, char **argv)
         auto case_name = get_path_last_folder(test_case);
         std::vector<std::string> input_data;
         auto inputs = get_input_from_files(test_case, pnames, input_data);
+        migraphx::onnx_options parse_options;
+        if (tune_param_shape(p, inputs, parse_options))
+        {
+            p = migraphx::parse_onnx(model_path_name.c_str(), parse_options);
+            p.compile(migraphx::target(target.c_str()), options);
+        }
+
         auto outputs = run_one_case(inputs, p);
         std::vector<std::string> out_data;
         auto gold_outputs = get_outputs(test_case, out_shapes.size(), out_data);
