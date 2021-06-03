@@ -6,7 +6,6 @@
 #include <iostream>
 #include <iomanip>
 #include <unordered_map>
-#include <migraphx/migraphx.hpp>
 #include <hip/hip_fp16.h>
 #include <cassert>
 #include "parse_tensor.hpp"
@@ -37,7 +36,6 @@ migraphx::argument create_argument(migraphx_shape_datatype_t type,
                                    const std::vector<std::size_t>& dims, 
                                    const std::vector<T>& data)
 {
-    std::cout << "data = " << data << std::endl;
     migraphx::shape s(type, dims);
     return {s, (void*)data.data()};
 }
@@ -190,7 +188,6 @@ migraphx::argument parse_tensor(const onnx::TensorProto& t, std::vector<std::str
     std::abort();
 }
 
-
 migraphx::argument parse_pb_file(const std::string& file_name, std::vector<std::string>& input_data)
 {
     std::fstream input(file_name.c_str(), std::ios::in | std::ios::binary);
@@ -209,44 +206,3 @@ migraphx::argument parse_pb_file(const std::string& file_name, std::vector<std::
 
     return parse_tensor(tensor, input_data);
 }
-
-// std::string parse_tensor(const onnx::TensorProto& t)
-// {
-//     std::vector<std::size_t> dims(t.dims().begin(), t.dims().end());
-//     if(not t.external_data().empty())
-//     {
-//         const std::string& data_file = t.external_data().at(0).value();
-//         std::string path = ".";
-//         auto raw_buffer              = read_pb_file(path + "/" + data_file);
-//         std::string s(raw_buffer.begin(), raw_buffer.end());
-//         auto type = get_type(t.data_type());
-//         return create_argument(type, dims, s.data());
-//     }
-//     if(t.has_raw_data())
-//     {
-//         const std::string& s = t.raw_data();
-//         auto type            = get_type(t.data_type());
-//         return create_argument(type, dims, s.data());
-//     }
-
-//     std::abort();
-// }
-
-// std::string parse_pb_file(const std::string& file_name)
-// {
-//     std::fstream input(file_name.c_str(), std::ios::in | std::ios::binary);
-// 	if (!input.is_open())
-//     {
-//         std::cout << "Tensor File " << file_name << " open error!" << std::endl;
-//         std::abort();
-//     }
-
-//     onnx::TensorProto tensor;
-//     if (not tensor.ParseFromIstream(&input))
-//     {
-//         std::cout << "Parse tensor from file " << file_name << " error!" << std::endl;
-//         std::abort();
-//     }
-
-//     return parse_tensor(tensor);
-// }

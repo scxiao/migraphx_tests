@@ -1,6 +1,5 @@
-#include "cmdline_options.hpp"
-
 #include <algorithm>
+#include "cmdline_options.hpp"
 
 char* getCmdOption(char ** begin, char ** end, const std::string & option)
 {

@@ -5,7 +5,6 @@ add_definitions(-D__HIP_PLATFORM_HCC__)
 
 set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
 #set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/MIGraph)
-#set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/migraphx_onnx_backend)
 #set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build_debug)
 set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build)
 
@@ -27,24 +26,8 @@ target_include_directories(onnx-proto SYSTEM PUBLIC ${CMAKE_CURRENT_BINARY_DIR} 
 target_compile_options(onnx-proto PRIVATE -w)
 target_link_libraries(onnx-proto PRIVATE ${PROTOBUF_LIBRARY})
 
-#file(GLOB util_SRC "*.cpp")
-#file(GLOB test_SRC test_*.cpp)
-#file(GLOB util_HDR "*.hpp")
-#list(REMOVE_ITEM util_SRC ${test_SRC})
-#add_library(utils SHARED ${util_SRC})
-
 file(GLOB src_files "*.cpp")
 set (bin_name migraphx_test_runner)
 message("source file: " ${src_name} " ---> bin: " ${bin_name})
 add_executable(${bin_name} ${src_files})
 target_link_libraries(${bin_name} migraphx_c onnx-proto stdc++fs)
-#set(src_files test_load_onnx.cpp test_run_onnx.cpp)
-
-#foreach(filepath_name ${test_examples})
-#    get_filename_component(src_name ${filepath_name} NAME)
-#    get_filename_component(bin_name ${src_name} NAME_WE)
-#    message("source file: " ${src_name} " ---> bin: " ${bin_name})
-#    add_executable(${bin_name} ${src_name})
-#    target_link_libraries(${bin_name} migraphx_c utils)
-#endforeach(filepath_name)
-

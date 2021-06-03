@@ -11,18 +11,6 @@
 #include <hip/hip_fp16.h>
 #include <migraphx/migraphx.hpp>
 
-template<typename T>
-void print_res(const T& res)
-{
-    for (std::size_t i = 0; i < res.size(); ++i)
-    {
-        std::cout << std::setprecision(9) << std::setw(12) << res[i] << ", ";
-        if ((i + 1) % 6 == 0) {
-            std::cout << std::endl;
-        }
-    }
-}
-
 template <class T>
 auto get_hash(const T& x)
 {
@@ -109,7 +97,7 @@ void print_argument(std::ostream& os, const migraphx::argument& arg)
     auto lens = s.lengths();
     auto elem_num = std::accumulate(lens.begin(), lens.end(), 1, std::multiplies<size_t>());
     migraphx_shape_datatype_t type = s.type();
-    std::cout << "type = " << type_name(type) << ", lens = " << s.lengths() << std::endl;
+    os << "type = " << type_name(type) << ", lens = " << s.lengths() << std::endl;
     if (type == migraphx_shape_float_type)
     {
         float *ptr = reinterpret_cast<float*>(arg.data());
@@ -285,23 +273,7 @@ bool compare_results(const T& cpu_res, const T& gpu_res, double eps)
     return passed;
 }
 
-bool compare_results(const std::vector<int>&cpu_res, const std::vector<int>& gpu_res)
-{
-    bool passed = true;
-    std::size_t cpu_size = cpu_res.size();
-    for (std::size_t i = 0; i < cpu_size; i++) {
-        if (cpu_res[i] - gpu_res[i] != 0)
-        {
-            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
-                gpu_res[i] << ")!!!!!!" << std::endl;
-            passed = false;
-        }
-    }
-
-    return passed;
-}
-
-bool compare_results(const std::vector<int64_t>&cpu_res, const std::vector<int64_t>& gpu_res)
+bool compare_results(const std::vector<int64_t>& cpu_res, const std::vector<int64_t>& gpu_res)
 {
     bool passed = true;
     std::size_t cpu_size = cpu_res.size();

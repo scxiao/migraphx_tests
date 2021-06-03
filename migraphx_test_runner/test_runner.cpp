@@ -6,7 +6,7 @@
 #include <string>
 #include <unordered_map>
 
-std::unordered_map<std::string, migraphx::argument> wrapup_input_arguments(const std::string& test_case,
+static std::unordered_map<std::string, migraphx::argument> get_input_from_files(const std::string& test_case,
         std::vector<std::string> param_names,
         std::vector<std::string>& input_data)
 {
@@ -21,7 +21,7 @@ std::unordered_map<std::string, migraphx::argument> wrapup_input_arguments(const
     return results;
 }
 
-std::vector<migraphx::argument> get_outputs(const std::string& test_case, const std::size_t out_num, std::vector<std::string>& out_data)
+static std::vector<migraphx::argument> get_outputs(const std::string& test_case, const std::size_t out_num, std::vector<std::string>& out_data)
 {
     std::vector<migraphx::argument> results;
     for (std::size_t i = 0; i < out_num; ++i)
@@ -33,8 +33,7 @@ std::vector<migraphx::argument> get_outputs(const std::string& test_case, const 
     return results;
 }
 
-
-migraphx::arguments run_one_case(const std::unordered_map<std::string, migraphx::argument>& inputs, migraphx::program& p)
+static migraphx::arguments run_one_case(const std::unordered_map<std::string, migraphx::argument>& inputs, migraphx::program& p)
 {
     auto param_shapes = p.get_parameter_shapes();
     migraphx::program_parameters m;
@@ -53,7 +52,6 @@ migraphx::arguments run_one_case(const std::unordered_map<std::string, migraphx:
 
     return p.eval(m);
 }
-
 
 int main(int argc, char **argv)
 {
@@ -88,15 +86,15 @@ int main(int argc, char **argv)
     options.offload_copy = true;
     p.compile(migraphx::target(target.c_str()), options);
 
-    auto model_name = get_path_last_part(model_path_name);
+    auto model_name = get_path_last_folder(model_path_name);
     auto test_cases = get_test_cases(argv[1]);
 
     int correct_num = 0;
     for(const auto& test_case : test_cases)
     {
-        auto case_name = get_path_last_part(test_case);
+        auto case_name = get_path_last_folder(test_case);
         std::vector<std::string> input_data;
-        auto inputs = wrapup_input_arguments(test_case, pnames, input_data);
+        auto inputs = get_input_from_files(test_case, pnames, input_data);
         auto outputs = run_one_case(inputs, p);
         std::vector<std::string> out_data;
         auto gold_outputs = get_outputs(test_case, out_shapes.size(), out_data);
@@ -109,7 +107,6 @@ int main(int argc, char **argv)
             auto output = outputs[i];
 
             if (not compare_results(gold, output))
-            // if (gold != output)
             {
                 std::cout << "Expected output:" << std::endl;
                 std::cout << gold << std::endl;
