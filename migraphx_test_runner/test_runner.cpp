@@ -70,7 +70,7 @@ int main(int argc, char **argv)
         target = std::string(target_str);
     }
 
-    std::cout << "Run test " << argv[1] << " on \"" << target << "\"" << std::endl << std::endl;
+    std::cout << "Run test \"" << argv[1] << "\" on \"" << target << "\":" << std::endl << std::endl;
 
     auto model_path_name = get_model_name(argv[1]);
     migraphx::onnx_options parse_options;
@@ -116,11 +116,11 @@ int main(int argc, char **argv)
                 correct = false;
             }
         }
-        std::cout << "Test case \"" << case_name << "\": " << (correct ? "PASSED" : "FAILED") << std::endl;
+        std::cout << "\tTest case \"" << case_name << "\": " << (correct ? "PASSED" : "FAILED") << std::endl;
         correct_num += static_cast<int>(correct);
     }
 
-    std::cout << "\nTest \"" << argv[1] << "\" has " << test_cases.size() << " cases:" << std::endl << std::endl;
+    std::cout << "\nTest \"" << argv[1] << "\" has " << test_cases.size() << " cases:" << std::endl;
     std::cout << "\t Passed: " << correct_num << std::endl;
     std::cout << "\t Failed: " << (test_cases.size() - correct_num) << std::endl;
 
