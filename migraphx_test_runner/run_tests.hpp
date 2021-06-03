@@ -59,8 +59,8 @@ void print_vec(std::ostream& os, const std::vector<T>& vec, std::size_t column_s
         std::size_t offset = vec.size() - 4 * column_size;
         for (std::size_t i = 0; i < 4 * column_size; ++i)
         {
-            if (i == vec.size() - 1) os << vec[i];
-            else os << vec[i] << ", ";
+            if (i == vec.size() - 1) os << vec[i + offset];
+            else os << vec[i + offset] << ", ";
             if ((i + 1) % column_size == 0)
             {
                 os << std::endl;
@@ -183,8 +183,8 @@ std::ostream& operator << (std::ostream& os, const migraphx::argument& arg)
     return os;
 }
 
-template <class T>
-void assign_value(const T* val, size_t num, std::vector<float>& output)
+template <class T, class U>
+void assign_value(const T* val, size_t num, std::vector<U>& output)
 {
     for (size_t i = 0; i < num; ++i)
     {
@@ -192,211 +192,177 @@ void assign_value(const T* val, size_t num, std::vector<float>& output)
     }
 }
 
-// void retrieve_argument_data(migraphx::argument& argu, std::vector<float>& output)
-// {
-//     auto s = argu.get_shape();
-//     auto lens = s.lengths();
-//     auto elem_num = std::accumulate(lens.begin(), lens.end(), 1, std::multiplies<size_t>());
-//     migraphx_shape_datatype_t type = s.type();
-//     if (type == migraphx_shape_float_type)
-//     {
-//         float *ptr = reinterpret_cast<float*>(argu.data());
-//         assign_value(ptr, elem_num, output);
-//     }
-//     else if (type == migraphx_shape_double_type)
-//     {
-//         double *ptr = reinterpret_cast<double*>(argu.data());
-//         assign_value(ptr, elem_num, output);
-//     }
-//     else if (type == migraphx_shape_int32_type)
-//     {
-//         int *ptr = reinterpret_cast<int*>(argu.data());
-//         assign_value(ptr, elem_num, output);
-//     }
-//     else if (type == migraphx_shape_int64_type)
-//     {
-//         int64_t *ptr = reinterpret_cast<int64_t*>(argu.data());
-//         assign_value(ptr, elem_num, output);
-//     }
-//     else if (type == migraphx_shape_int8_type)
-//     {
-//         int8_t *ptr = reinterpret_cast<int8_t*>(argu.data());
-//         assign_value(ptr, elem_num, output);
-//     }
-//     else if (type == migraphx_shape_uint32_type)
-//     {
-//         uint32_t *ptr = reinterpret_cast<uint32_t*>(argu.data());
-//         assign_value(ptr, elem_num, output);
-//     }
-//     else if (type == migraphx_shape_uint64_type)
-//     {
-//         uint64_t *ptr = reinterpret_cast<uint64_t*>(argu.data());
-//         assign_value(ptr, elem_num, output);
-//     }
-//     else if (type == migraphx_shape_uint8_type)
-//     {
-//         uint8_t *ptr = reinterpret_cast<uint8_t*>(argu.data());
-//         assign_value(ptr, elem_num, output);
-//     }
-//     else if (type == migraphx_shape_bool_type)
-//     {
-//         bool *ptr = reinterpret_cast<bool*>(argu.data());
-//         assign_value(ptr, elem_num, output);
-//     }
-//     else
-//     {
-//         std::cout << "Type not support" << std::endl;
-//         std::abort();
-//     }
-// }
-
-template <class T>
-void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::vector<T>> &resData)
+template<class T>
+void retrieve_argument_data(const migraphx::argument& argu, std::vector<T>& output)
 {
-    migraphx_compile_options options;
-    options.offload_copy = true;
-    p.compile(t, options);
-    std::cout << "compiled program = " << std::endl;
-    p.print();
-    std::cout << std::endl;
-
-    std::vector<int> indices = {2, 1, 2, 0, 1, 0};
-    std::vector<std::vector<int>> vec_int;
-    std::vector<std::vector<char>> vec_char;
-    std::vector<std::vector<float>> vec_float;
-    migraphx::program_parameters m;
-    auto param_shapes = p.get_parameter_shapes();
-    for (auto &&name : param_shapes.names())
+    auto s = argu.get_shape();
+    auto lens = s.lengths();
+    auto elem_num = std::accumulate(lens.begin(), lens.end(), 1, std::multiplies<size_t>());
+    migraphx_shape_datatype_t type = s.type();
+    if (type == migraphx_shape_float_type)
     {
-        auto s = param_shapes[name];
-        migraphx::argument argu;
-        std::cout << "input: " << name << "\'shape = " << s.lengths() << std::endl;
-        if (std::string(name) == "indices")
-        {
-            argu = migraphx::argument(s, indices.data());
-        }
-        else if (s.type() == migraphx_shape_int32_type)
-        {
-            std::vector<int> vec(s.bytes()/sizeof(float), 2);
-            vec_int.push_back(vec);
-            argu = migraphx::argument(s, vec_int.back().data());
-        }
-        else if (s.type() == migraphx_shape_bool_type)
-        {
-            std::vector<char> vec(s.bytes(), 1);
-            vec_char.push_back(vec);
-            argu = migraphx::argument(s, vec_char.back().data());
-        }
-        else if (s.type() == migraphx_shape_float_type)
-        {   
-            std::vector<float> vec(s.bytes()/sizeof(float));
-            std::iota(vec.begin(), vec.end(), 1);
-            vec_float.push_back(vec);
-            //argu = migraphx::argument(s, vec_float.back().data());
-            argu = migraphx::argument::generate(s, get_hash(std::string(name)));
-            float* ptr = (float*)argu.data();
-            std::cout << "name = {";
-            for (int i = 0; i < s.bytes() / 4; ++i)
-            {
-                if (i > 0) std::cout << ", ";
-                std::cout << ptr[i];
-            }
-            std::cout << "}" << std::endl;
-        }
-        else
-        {
-            std::cout << "type not supported" << std::endl;
-            std::abort();
-        }
-        m.add(name, argu);
+        float *ptr = reinterpret_cast<float*>(argu.data());
+        assign_value(ptr, elem_num, output);
     }
-
-    std::cout << "Begin execution ...." << std::endl;
-    auto outputs = p.eval(m);
-    std::cout << "End execution ...." << std::endl;
-
-    size_t output_num = outputs.size();
-    for (size_t i = 0; i < output_num; ++i)
+    else if (type == migraphx_shape_double_type)
     {
-        auto out_argu = outputs[i];
-        migraphx::shape out_s = out_argu.get_shape();
-
-        std::cout << "Output_" << i << "_shape = " << out_s.lengths() << std::endl;
-        std::cout << "Result_" << i << " = " << std::endl;
-
-        // std::vector<float> resTmp;
-        // retrieve_argument_data(out_argu, resTmp);
-        // resData.push_back(resTmp);
-        // print_res(resTmp);
-        // std::cout << std::endl;
+        double *ptr = reinterpret_cast<double*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
+    else if (type == migraphx_shape_int32_type)
+    {
+        int *ptr = reinterpret_cast<int*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
+    else if (type == migraphx_shape_int64_type)
+    {
+        int64_t *ptr = reinterpret_cast<int64_t*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
+    else if (type == migraphx_shape_int8_type)
+    {
+        int8_t *ptr = reinterpret_cast<int8_t*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
+    else if (type == migraphx_shape_uint32_type)
+    {
+        uint32_t *ptr = reinterpret_cast<uint32_t*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
+    else if (type == migraphx_shape_uint64_type)
+    {
+        uint64_t *ptr = reinterpret_cast<uint64_t*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
+    else if (type == migraphx_shape_uint8_type)
+    {
+        uint8_t *ptr = reinterpret_cast<uint8_t*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
+    else if (type == migraphx_shape_bool_type)
+    {
+        bool *ptr = reinterpret_cast<bool*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
+    else
+    {
+        std::cout << "Type not support" << std::endl;
+        std::abort();
     }
 }
 
-// template<typename T>
-// bool compare_results(const T& cpu_res, const T& gpu_res)
-// {
-//     bool passed = true;
-//     std::size_t cpu_size = cpu_res.size();
-//     float fmax_diff = 0.0f;
-//     size_t max_index = 0;
-//     for (std::size_t i = 0; i < cpu_size; i++) {
-//         auto diff = fabs(cpu_res[i] - gpu_res[i]);
-//         if (diff > 1.0e-3)
-//         {
-//             if (fmax_diff < diff) 
-//             {
-//                 fmax_diff = diff;
-//                 max_index = i;
-//                 passed = false;
-//             }
-//             std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
-//                 gpu_res[i] << ")!!!!!!" << std::endl;
-//         }
-//     }
+template<typename T>
+bool compare_results(const T& cpu_res, const T& gpu_res, double eps)
+{
+    bool passed = true;
+    std::size_t cpu_size = cpu_res.size();
+    float fmax_diff = 0.0f;
+    size_t max_index = 0;
+    for (std::size_t i = 0; i < cpu_size; i++) {
+        auto diff = fabs(cpu_res[i] - gpu_res[i]);
+        if (diff > eps)
+        {
+            if (fmax_diff < diff) 
+            {
+                fmax_diff = diff;
+                max_index = i;
+                passed = false;
+            }
+            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
+                gpu_res[i] << ")!!!!!!" << std::endl;
+        }
+    }
 
-//     if (!passed)
-//     {
-//         size_t i = max_index;
-//         std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
-//             gpu_res[i] << ")!!!!!!" << std::endl;
+    if (!passed)
+    {
+        size_t i = max_index;
+        std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
+            gpu_res[i] << ")!!!!!!" << std::endl;
 
-//         std::cout << "max_diff = " << fmax_diff << std::endl;
-//     }
+        std::cout << "max_diff = " << fmax_diff << std::endl;
+    }
 
-//     return passed;
-// }
+    return passed;
+}
 
-// bool compare_results(const std::vector<int>&cpu_res, const std::vector<int>& gpu_res)
-// {
-//     bool passed = true;
-//     std::size_t cpu_size = cpu_res.size();
-//     for (std::size_t i = 0; i < cpu_size; i++) {
-//         if (cpu_res[i] - gpu_res[i] != 0)
-//         {
-//             std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
-//                 gpu_res[i] << ")!!!!!!" << std::endl;
-//             passed = false;
-//         }
-//     }
+bool compare_results(const std::vector<int>&cpu_res, const std::vector<int>& gpu_res)
+{
+    bool passed = true;
+    std::size_t cpu_size = cpu_res.size();
+    for (std::size_t i = 0; i < cpu_size; i++) {
+        if (cpu_res[i] - gpu_res[i] != 0)
+        {
+            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
+                gpu_res[i] << ")!!!!!!" << std::endl;
+            passed = false;
+        }
+    }
 
-//     return passed;
-// }
+    return passed;
+}
 
-// bool compare_results(const std::vector<int64_t>&cpu_res, const std::vector<int64_t>& gpu_res)
-// {
-//     bool passed = true;
-//     std::size_t cpu_size = cpu_res.size();
-//     for (std::size_t i = 0; i < cpu_size; i++) {
-//         if (cpu_res[i] - gpu_res[i] != 0)
-//         {
-//             std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
-//                 gpu_res[i] << ")!!!!!!" << std::endl;
-//             passed = false;
-//         }
-//     }
+bool compare_results(const std::vector<int64_t>&cpu_res, const std::vector<int64_t>& gpu_res)
+{
+    bool passed = true;
+    std::size_t cpu_size = cpu_res.size();
+    for (std::size_t i = 0; i < cpu_size; i++) {
+        if (cpu_res[i] - gpu_res[i] != 0)
+        {
+            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
+                gpu_res[i] << ")!!!!!!" << std::endl;
+            passed = false;
+        }
+    }
 
-//     return passed;
-// }
+    return passed;
+}
+
+bool compare_shapes(const migraphx::shape& s1, const migraphx::shape& s2)
+{
+    auto lens1 = s1.lengths();
+    migraphx_shape_datatype_t type1 = s1.type();    
+    auto lens2 = s2.lengths();
+    migraphx_shape_datatype_t type2 = s2.type();
+    if (type1 != type2)
+    {
+        std::cout << "Shape types are different!" << std::endl;
+        return false;
+    }
+
+    if (lens1 != lens2)
+    {
+        std::cout << "Shape dims are different!" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+bool compare_results(const migraphx::argument& arg1, const migraphx::argument& arg2, double eps = 0.001)
+{
+    if (not compare_shapes(arg1.get_shape(), arg2.get_shape()))
+    {
+        return false;
+    }
+
+    auto type = arg1.get_shape().type();
+    if (type == migraphx_shape_double_type or type == migraphx_shape_float_type or migraphx_shape_half_type)
+    {
+        std::vector<double> res1, res2;
+        retrieve_argument_data(arg1, res1);
+        retrieve_argument_data(arg2, res2);
+
+        return compare_results(res1, res2, eps);
+    }
+    else
+    {
+        std::vector<int64_t> res1, res2;
+        retrieve_argument_data(arg1, res1);
+        retrieve_argument_data(arg2, res2);
+
+        return compare_results(res1, res2);        
+    }
+}
 
 #endif
 

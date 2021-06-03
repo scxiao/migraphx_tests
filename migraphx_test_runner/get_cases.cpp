@@ -7,12 +7,12 @@ namespace fs = ::std::experimental::filesystem;
 std::string get_path_last_part(const std::string& path_str)
 {
     const fs::path p = path_str;
-    std::cout << "Examining the path " << p << " through iterators gives" << std::endl;
-    for (auto it = p.begin(); it != p.end(); ++it)
-    {
-        std::cout << *it << std::endl;
-    }
-    std::cout << std::endl;
+    //std::cout << "Examining the path " << p << " through iterators gives" << std::endl;
+    //for (auto it = p.begin(); it != p.end(); ++it)
+    //{
+    //    std::cout << *it << std::endl;
+    //}
+    //std::cout << std::endl;
 
     std::string last = *std::prev(p.end());
 

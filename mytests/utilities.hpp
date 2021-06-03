@@ -205,7 +205,7 @@ void run_prog(migraphx::program p, std::vector<std::vector<T>> &resData, const r
         }
         else if (x.second.type() == migraphx::shape::bool_type)
         {
-            auto&& argu = migraphx::fill_argument(x.second, 0);
+            auto&& argu = migraphx::fill_argument(x.second, 1);
             std::cout << "argu_bool = " << argu << std::endl;
             m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
         }

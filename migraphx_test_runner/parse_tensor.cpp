@@ -14,7 +14,7 @@
 using node_map = std::unordered_map<std::string, onnx::NodeProto>;
 
 template<class T>
-void print(std::ostream& os, const std::vector<T>& dims)
+static void print(std::ostream& os, const std::vector<T>& dims)
 {
     os << "{";
     for (std::size_t i = 0; i < dims.size(); ++i)
@@ -26,7 +26,7 @@ void print(std::ostream& os, const std::vector<T>& dims)
 }
 
 template<class T>
-std::ostream& operator << (std::ostream& os, const std::vector<T>& dims)
+static std::ostream& operator << (std::ostream& os, const std::vector<T>& dims)
 {
     print(os, dims);
     return os;
@@ -93,7 +93,7 @@ migraphx_shape_datatype_t get_type(int dtype)
     }
 }
 
-migraphx::argument parse_tensor(const onnx::TensorProto& t)
+migraphx::argument parse_tensor(const onnx::TensorProto& t, std::vector<std::string>& input_data)
 {
     std::vector<std::size_t> dims(t.dims().begin(), t.dims().end());
     if(not t.external_data().empty())
@@ -102,14 +102,16 @@ migraphx::argument parse_tensor(const onnx::TensorProto& t)
         std::string path = ".";
         auto raw_buffer              = read_pb_file(path + "/" + data_file);
         std::string s(raw_buffer.begin(), raw_buffer.end());
+        input_data.push_back(s);
         auto type = get_type(t.data_type());
-        return create_argument(type, dims, s.data());
+        return create_argument(type, dims, input_data.back().data());
     }
     if(t.has_raw_data())
     {
         const std::string& s = t.raw_data();
+        input_data.push_back(s);
         auto type            = get_type(t.data_type());
-        return create_argument(type, dims, s.data());
+        return create_argument(type, dims, input_data.back().data());
     }
 
     switch(t.data_type())
@@ -189,7 +191,7 @@ migraphx::argument parse_tensor(const onnx::TensorProto& t)
 }
 
 
-migraphx::argument parse_pb_file(const std::string& file_name)
+migraphx::argument parse_pb_file(const std::string& file_name, std::vector<std::string>& input_data)
 {
     std::fstream input(file_name.c_str(), std::ios::in | std::ios::binary);
 	if (!input.is_open())
@@ -205,6 +207,46 @@ migraphx::argument parse_pb_file(const std::string& file_name)
         std::abort();
     }
 
-    return parse_tensor(tensor);
+    return parse_tensor(tensor, input_data);
 }
 
+// std::string parse_tensor(const onnx::TensorProto& t)
+// {
+//     std::vector<std::size_t> dims(t.dims().begin(), t.dims().end());
+//     if(not t.external_data().empty())
+//     {
+//         const std::string& data_file = t.external_data().at(0).value();
+//         std::string path = ".";
+//         auto raw_buffer              = read_pb_file(path + "/" + data_file);
+//         std::string s(raw_buffer.begin(), raw_buffer.end());
+//         auto type = get_type(t.data_type());
+//         return create_argument(type, dims, s.data());
+//     }
+//     if(t.has_raw_data())
+//     {
+//         const std::string& s = t.raw_data();
+//         auto type            = get_type(t.data_type());
+//         return create_argument(type, dims, s.data());
+//     }
+
+//     std::abort();
+// }
+
+// std::string parse_pb_file(const std::string& file_name)
+// {
+//     std::fstream input(file_name.c_str(), std::ios::in | std::ios::binary);
+// 	if (!input.is_open())
+//     {
+//         std::cout << "Tensor File " << file_name << " open error!" << std::endl;
+//         std::abort();
+//     }
+
+//     onnx::TensorProto tensor;
+//     if (not tensor.ParseFromIstream(&input))
+//     {
+//         std::cout << "Parse tensor from file " << file_name << " error!" << std::endl;
+//         std::abort();
+//     }
+
+//     return parse_tensor(tensor);
+// }

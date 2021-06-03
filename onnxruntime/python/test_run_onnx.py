@@ -74,7 +74,7 @@ def wrapup_inputs(session, dim_val_dict, default_val):
     return input_data
 
 
-def write_tensor_to_file(data, filename):
+def write_tensor_to_file1(data, filename):
     # convert numpy array to onnx tensor
     tensor = numpy_helper.from_array(data)
     data_str = tensor.SerializeToString()
@@ -96,7 +96,7 @@ def write_tensor_to_file(data, out_dir, index, is_input):
         name_prefix = name_prefix + 'output_'
 
     filename = name_prefix + str(index) + '.pb'
-    write_tensor_t_file(data, filename)
+    write_tensor_to_file1(data, filename)
 
 #   file = open(filename, 'wb')
 #   file.write(data_str)

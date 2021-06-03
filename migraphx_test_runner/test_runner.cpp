@@ -6,26 +6,28 @@
 #include <string>
 #include <unordered_map>
 
-std::unordered_map<std::string, migraphx::argument> wrapup_input_arguments(const std::string& test_case, const std::vector<const char*>& param_names)
+std::unordered_map<std::string, migraphx::argument> wrapup_input_arguments(const std::string& test_case,
+        std::vector<std::string> param_names,
+        std::vector<std::string>& input_data)
 {
     std::unordered_map<std::string, migraphx::argument> results;
     std::size_t i = 0;
-    for (const auto& name : param_names)
+    for (auto name : param_names)
     {
-        std::string pb_file_name = test_case + "/input_" + std::to_string(i) + ".pb";
-        results[std::string(name)] = parse_pb_file(pb_file_name);
+        std::string pb_file_name = test_case + "/input_" + std::to_string(i++) + ".pb";
+        results[name] = parse_pb_file(pb_file_name, input_data);
     }
 
     return results;
 }
 
-std::vector<migraphx::argument> get_outputs(const std::string& test_case, const std::size_t out_num)
+std::vector<migraphx::argument> get_outputs(const std::string& test_case, const std::size_t out_num, std::vector<std::string>& out_data)
 {
     std::vector<migraphx::argument> results;
     for (std::size_t i = 0; i < out_num; ++i)
     {
         std::string pb_file_name = test_case + "/output_" + std::to_string(i) + ".pb";
-        results.push_back(parse_pb_file(pb_file_name));
+        results.push_back(parse_pb_file(pb_file_name, out_data));
     }
 
     return results;
@@ -38,7 +40,6 @@ migraphx::arguments run_one_case(const std::unordered_map<std::string, migraphx:
     migraphx::program_parameters m;
     for (auto&& name : param_shapes.names())
     {
-        std::cout << "param_name = " << name << std::endl;
         if (inputs.count(std::string(name)) > 0)
         {
             m.add(name, inputs.at(name));
@@ -71,10 +72,17 @@ int main(int argc, char **argv)
         target = std::string(target_str);
     }
 
+    std::cout << "Run test " << argv[1] << " on \"" << target << "\"" << std::endl << std::endl;
+
     auto model_path_name = get_model_name(argv[1]);
     migraphx::onnx_options parse_options;
     migraphx::program p = migraphx::parse_onnx(model_path_name.c_str(), parse_options);
     auto param_names = p.get_parameter_names();
+    std::vector<std::string> pnames;
+    std::transform(param_names.begin(), param_names.end(), std::back_inserter(pnames), [](auto str) {
+            return std::string(str);
+            });
+
     auto out_shapes = p.get_output_shapes();
     migraphx_compile_options options;
     options.offload_copy = true;
@@ -87,9 +95,11 @@ int main(int argc, char **argv)
     for(const auto& test_case : test_cases)
     {
         auto case_name = get_path_last_part(test_case);
-        auto inputs = wrapup_input_arguments(test_case, param_names);
+        std::vector<std::string> input_data;
+        auto inputs = wrapup_input_arguments(test_case, pnames, input_data);
         auto outputs = run_one_case(inputs, p);
-        auto gold_outputs = get_outputs(test_case, out_shapes.size());
+        std::vector<std::string> out_data;
+        auto gold_outputs = get_outputs(test_case, out_shapes.size(), out_data);
 
         auto out_num = outputs.size();
         bool correct = true;
@@ -98,7 +108,8 @@ int main(int argc, char **argv)
             auto gold = gold_outputs.at(i);
             auto output = outputs[i];
 
-            if (gold != output)
+            if (not compare_results(gold, output))
+            // if (gold != output)
             {
                 std::cout << "Expected output:" << std::endl;
                 std::cout << gold << std::endl;
@@ -108,11 +119,11 @@ int main(int argc, char **argv)
                 correct = false;
             }
         }
-        std::cout << "Test case: " << test_case << (correct ? "PASSED" : "FAILED") << std::endl;
+        std::cout << "Test case \"" << case_name << "\": " << (correct ? "PASSED" : "FAILED") << std::endl;
         correct_num += static_cast<int>(correct);
     }
 
-    std::cout << "Test \"" << get_path_last_part(argv[1]) << "\" has " << test_cases.size() << " cases:" << std::endl;
+    std::cout << "\nTest \"" << argv[1] << "\" has " << test_cases.size() << " cases:" << std::endl << std::endl;
     std::cout << "\t Passed: " << correct_num << std::endl;
     std::cout << "\t Failed: " << (test_cases.size() - correct_num) << std::endl;
 

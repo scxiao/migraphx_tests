@@ -3,9 +3,9 @@ project (Test_migraphx)
 
 #add_definitions(-D__HIP_PLATFORM_HCC__)
 
-#set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX2)
+set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
 #set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/migraphx_onnx_backend)
-set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/MIGraph)
+#set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/MIGraph)
 set (DEPS_FOLDER deps_json)
 #set (DEPS_FOLDER deps_miopen2.2)
 #set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build_rocm3.0)

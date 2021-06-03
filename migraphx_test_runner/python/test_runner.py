@@ -80,6 +80,7 @@ def run_one_case(model, param_map):
     # convert np array to model argument
     pp = {}
     for key, val in param_map.items():
+        print("input = {}".format(val))
         pp[key] = migraphx.argument(val)
 
     # run the model
@@ -100,6 +101,8 @@ def check_correctness(gold_outputs, outputs, rtol=1e-3, atol=1e-3):
     out_num = len(gold_outputs)
     ret = True
     for i in range(out_num):
+        print("Expected value: \n{}".format(gold_outputs[i]))
+        print("Actual value: \n{}".format(outputs[i]))
         if not np.allclose(gold_outputs[i], outputs[i], rtol, atol):
             print("Output {} is incorrect ...".format(i))
             print("Expected value: \n{}".format(gold_outputs[i]))
