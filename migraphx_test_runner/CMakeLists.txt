@@ -3,21 +3,12 @@ project (migraphx_test_runner)
 
 add_definitions(-D__HIP_PLATFORM_HCC__)
 
-#set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/AMDMIGraphX)
-#set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/MIGraph)
-#set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build_debug)
-#set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build)
-
-#set (DEPS_FOLDER /home/scxiao/Workplace/projects/MIGraph/deps_json)
 set (CMAKE_CXX_STANDARD 17)
 
-#set (CMAKE_PREFIX_PATH /home/scxiao/Workplace/projects/MIGraph/deps_json)
 find_package(migraphx REQUIRED)
 find_package(Protobuf REQUIRED)
 
 include_directories(/opt/rocm-4.1.0/include)
-#link_directories(${MIGRAPHX_BUILD}/lib
-#                 ${DEPS_FOLDER}/lib)
 
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS onnx.proto)
 add_library(onnx-proto STATIC ${PROTO_SRCS})
