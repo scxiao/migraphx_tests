@@ -1,0 +1,3 @@
+[submodule "migraphx_test_runner/protobuf"]
+	path = migraphx_test_runner/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
