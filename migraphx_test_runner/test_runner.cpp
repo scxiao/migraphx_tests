@@ -104,8 +104,8 @@ int main(int argc, char **argv)
             });
 
     auto out_shapes = p.get_output_shapes();
-    migraphx_compile_options options;
-    options.offload_copy = true;
+    migraphx::compile_options options;
+    options.set_offload_copy();
     p.compile(migraphx::target(target.c_str()), options);
 
     auto model_name = get_path_last_folder(model_path_name);
