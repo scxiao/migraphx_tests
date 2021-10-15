@@ -1,3 +1,0 @@
-[submodule "migraphx_test_runner/externel"]
-	path = migraphx_test_runner/externel
-	url = https://github.com/protocolbuffers/protobuf.git
