@@ -3,6 +3,7 @@
 #include "parse_tensor.hpp"
 #include "run_tests.hpp"
 #include "cmdline_options.hpp"
+#include "get_model_param_names.hpp"
 #include <string>
 #include <unordered_map>
 
@@ -16,6 +17,19 @@ static std::unordered_map<std::string, migraphx::argument> get_input_from_files(
     {
         std::string pb_file_name = test_case + "/input_" + std::to_string(i++) + ".pb";
         results[name] = parse_pb_file(pb_file_name, input_data);
+    }
+
+    return results;
+}
+
+static std::unordered_map<std::string, std::vector<std::size_t>> get_input_shapes(const std::string& test_case, std::vector<std::string> param_names)
+{
+    std::unordered_map<std::string, std::vector<std::size_t>> results;
+    std::size_t i = 0;
+    for (auto name : param_names)
+    {
+        std::string pb_file_name = test_case + "/input_" + std::to_string(i++) + ".pb";
+        results[name] = get_input_dims(pb_file_name);
     }
 
     return results;
@@ -96,27 +110,39 @@ int main(int argc, char **argv)
     std::cout << "Run test \"" << argv[1] << "\" on \"" << target << "\":" << std::endl << std::endl;
 
     auto model_path_name = get_model_name(argv[1]);
-    migraphx::program p = migraphx::parse_onnx(model_path_name.c_str());
-    auto param_names = p.get_parameter_names();
-    std::vector<std::string> pnames;
-    std::transform(param_names.begin(), param_names.end(), std::back_inserter(pnames), [](auto str) {
-            return std::string(str);
-            });
+    auto param_names = get_model_param_names(model_path_name);
 
+    // retrieve all test cases
+    auto test_cases = get_test_cases(argv[1]);
+    // sample test case
+    auto sample_test_case = test_cases.front();
+    auto param_shapes = get_input_shapes(sample_test_case, param_names);
+
+    // set the param to corresponding dims
+    migraphx::onnx_options parse_options;
+    for(const auto& name : param_names)
+    {
+        if (param_shapes.count(name) > 0)
+        {
+            auto dims = param_shapes[name];
+            parse_options.set_input_parameter_shape(name, dims);
+        }
+    }
+
+    migraphx::program p = migraphx::parse_onnx(model_path_name.c_str(), parse_options);
     auto out_shapes = p.get_output_shapes();
     migraphx::compile_options options;
     options.set_offload_copy();
     p.compile(migraphx::target(target.c_str()), options);
 
     auto model_name = get_path_last_folder(model_path_name);
-    auto test_cases = get_test_cases(argv[1]);
 
     int correct_num = 0;
     for(const auto& test_case : test_cases)
     {
         auto case_name = get_path_last_folder(test_case);
         std::vector<std::string> input_data;
-        auto inputs = get_input_from_files(test_case, pnames, input_data);
+        auto inputs = get_input_from_files(test_case, param_names, input_data);
         migraphx::onnx_options parse_options;
         if (tune_param_shape(p, inputs, parse_options))
         {

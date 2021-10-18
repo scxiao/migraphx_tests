@@ -11,5 +11,7 @@ migraphx::argument parse_pb_file(const std::string& file_name, std::vector<std::
 
 std::vector<char> read_pb_file(const std::string& file_name);
 
+std::vector<std::size_t> get_input_dims(const std::string& file_name);
+
 #endif
 

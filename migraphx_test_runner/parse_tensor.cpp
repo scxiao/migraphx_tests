@@ -206,3 +206,30 @@ migraphx::argument parse_pb_file(const std::string& file_name, std::vector<std::
 
     return parse_tensor(tensor, input_data);
 }
+
+static std::vector<std::size_t> get_tensor_dims(const onnx::TensorProto& t)
+{
+    std::vector<std::size_t> dims(t.dims().begin(), t.dims().end());
+    return dims;
+}
+
+std::vector<std::size_t> get_input_dims(const std::string& file_name)
+{
+    std::fstream input(file_name.c_str(), std::ios::in | std::ios::binary);
+	if (!input.is_open())
+    {
+        std::cout << "Tensor File " << file_name << " open error!" << std::endl;
+        std::abort();
+    }
+
+    onnx::TensorProto tensor;
+    if (not tensor.ParseFromIstream(&input))
+    {
+        std::cout << "Parse tensor from file " << file_name << " error!" << std::endl;
+        std::abort();
+    }
+
+    return get_tensor_dims(tensor);
+}
+
+
