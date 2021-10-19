@@ -29,6 +29,7 @@ int main(int argc, char **argv) {
         std::cout << "\t-s       shape_info_file" << std::endl;
         std::cout << "\t-d       ref/gpu(default)/both" << std::endl;
         std::cout << "\t-q       fp16/int8/no_quant(default)" << std::endl;
+        std::cout << "\t-iter    iter_num (default: 1)" << std::endl;
         return 0;
     }
 
@@ -56,6 +57,13 @@ int main(int argc, char **argv) {
     if (option_input_file != nullptr)
     {
         options = load_name_dim_file(std::string(option_input_file));
+    }
+
+    std::size_t iter_num = 1;
+    char *option_iter_num = getCmdOption(argv + 2, argv + argc, "-iter");
+    if (option_iter_num != nullptr)
+    {
+        iter_num = std::atoi(option_iter_num);
     }
 
     migraphx::program prog = load_onnx_file(argv[1], options);
@@ -90,7 +98,7 @@ int main(int argc, char **argv) {
 
     if (device_name == "both")
     {
-        migraphx::program prog_g = migraphx::parse_onnx(argv[1]);
+        migraphx::program prog_g = migraphx::parse_onnx(argv[1], options);
         std::vector<std::vector<float>> cpu_res, gpu_res;
         run_prog(prog, migraphx::target("ref"), cpu_res);
         run_prog(prog_g, migraphx::target("gpu"), gpu_res);
@@ -109,7 +117,7 @@ int main(int argc, char **argv) {
     else
     {
         std::vector<std::vector<float>> result;
-        run_prog(prog, t, result);
+        run_prog(prog, t, result, iter_num);
         //std::cout << "result = " << std::endl;
         //print_res(result);
     }

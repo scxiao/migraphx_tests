@@ -12,7 +12,8 @@ import json
 type_table = {
     'tensor(int64)' : np.int64,
     'tensor(int32)' : np.int32,
-    'tensor(float)' : np.float32
+    'tensor(float)' : np.float32,
+    'tensor(bool)' : np.bool
 }
 
 def get_numpy_type(tensor_type):
@@ -65,11 +66,11 @@ def wrapup_inputs(session, dim_val_dict, default_val):
             print('Dynamic input shape, change shape to: {}'.format(dims))
 
         np_type = get_numpy_type(input_type)
+        print("type = {}".format(np_type))
         if np_type == np.int32 or np_type == np.int64:
-            print("integer type")
-            input_data[name] = np.ones(dims).astype(np_type)
+#            input_data[name] = np.ones(dims).astype(np_type)
+            input_data[name] = np.full((dims), 2).astype(np_type)
         else:
-            print("type = {}".format(np_type))
             input_data[name] = np.random.random(dims).astype(np_type)
     return input_data
 
@@ -193,7 +194,7 @@ def parse_args():
     parser.add_argument('--default_dim_val', type=int, metavar='deft_val', default=1, help='Specify the default value used for dim variables')
     parser.add_argument('--var_dim', type=str, help='Specify the value of a variable dim')
     parser.add_argument('model', type=str, metavar='model_file', help='onnx file name of the model')
-    parser.add_argument('--ep', type=str, metavar='ep_name', default="MIGraphX", help='Name of the execution provider, CPU or MIGraphX')
+    parser.add_argument('--ep', type=str, metavar='ep_name', default="CPU", help='Name of the execution provider, CPU or MIGraphX')
     parser.add_argument('--create_test', action='store_true', help='Creat a unit test for the run')
     parser.add_argument('--case_dir', type=str, metavar='case_dir', default='ort_test', help='folder where the created test is stored')
     parser.add_argument('--case_num', type=int, metavar='case_num', default=1, help='Number of cases')

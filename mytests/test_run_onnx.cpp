@@ -209,8 +209,8 @@ int main(int argc, char **argv) {
         std::vector<std::vector<float>> result;
         roptions.iter_num = iter_num;
         run_prog(prog, result, roptions);
-        std::cout << "result = " << std::endl;
-        print_res(result);
+        //std::cout << "result = " << std::endl;
+        //print_res(result);
     }
 
     return 0;

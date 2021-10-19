@@ -33,12 +33,12 @@ def main():
 
     if target == "both":
         model_clone = model.clone()
-        gpu_res = run_model(model_clone, "cpu")
+        gpu_res = run_model(model_clone, "ref")
         cpu_res = run_model(model, "gpu")
     elif target == "gpu":
         run_model(model, "gpu")
     else:
-        run_model(model, "cpu")
+        run_model(model, "ref")
 
 if __name__ == "__main__":
     main()

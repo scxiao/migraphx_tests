@@ -13,7 +13,7 @@ onnx.checker.check_model(original_model)
 
 #print(original_model)
 inferred_model = shape_inference.infer_shapes(original_model)
-print('Mode graph is:\n#{}\n'.format(inferred_model))
+#print('Mode graph is:\n#{}\n'.format(inferred_model))
 
 print(onnx.helper.printable_graph(inferred_model.graph))
 

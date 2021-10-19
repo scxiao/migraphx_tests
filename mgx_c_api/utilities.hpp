@@ -7,8 +7,11 @@
 #include <vector>
 #include <numeric>
 #include <cmath>
+#include <chrono>
 
 #include <migraphx/migraphx.hpp>
+
+using milliseconds = std::chrono::duration<double, std::milli>;
 
 template<typename T>
 void print_res(const T& res)
@@ -124,7 +127,7 @@ void retrieve_argument_data(migraphx::argument& argu, std::vector<float>& output
 }
 
 template <class T>
-void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::vector<T>> &resData)
+void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::vector<T>> &resData, std::size_t iter_num = 1)
 {
     migraphx_compile_options options;
     options.offload_copy = true;
@@ -167,14 +170,14 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
             vec_float.push_back(vec);
             //argu = migraphx::argument(s, vec_float.back().data());
             argu = migraphx::argument::generate(s, get_hash(std::string(name)));
-            float* ptr = (float*)argu.data();
-            std::cout << "name = {";
-            for (int i = 0; i < s.bytes() / 4; ++i)
-            {
-                if (i > 0) std::cout << ", ";
-                std::cout << ptr[i];
-            }
-            std::cout << "}" << std::endl;
+            //float* ptr = (float*)argu.data();
+            //std::cout << "name = {";
+            //for (int i = 0; i < s.bytes() / 4; ++i)
+            //{
+            //    if (i > 0) std::cout << ", ";
+            //    std::cout << ptr[i];
+            //}
+            //std::cout << "}" << std::endl;
         }
         else
         {
@@ -184,10 +187,25 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
         m.add(name, argu);
     }
 
-    std::cout << "Begin execution ...." << std::endl;
-    auto outputs = p.eval(m);
-    std::cout << "End execution ...." << std::endl;
+    if (iter_num > 1)
+    {
+        p.eval(m);
 
+        std::cout << "Begin execution ...." << std::endl;
+        auto start = std::chrono::steady_clock::now();
+
+        for(std::size_t i = 0; i < iter_num; ++i)
+        {
+            p.eval(m);
+        }
+
+        auto end = std::chrono::steady_clock::now();
+        auto milli_seconds = std::chrono::duration_cast<milliseconds>(end - start).count();
+        std::cout << "time per iteration = " << milli_seconds / iter_num << std::endl;
+        std::cout << "End execution ...." << std::endl;
+    }
+
+    auto outputs = p.eval(m);
     size_t output_num = outputs.size();
     for (size_t i = 0; i < output_num; ++i)
     {
@@ -200,8 +218,8 @@ void run_prog(migraphx::program p, const migraphx::target& t, std::vector<std::v
         std::vector<float> resTmp;
         retrieve_argument_data(out_argu, resTmp);
         resData.push_back(resTmp);
-        print_res(resTmp);
-        std::cout << std::endl;
+        //print_res(resTmp);
+        //std::cout << std::endl;
     }
 }
 

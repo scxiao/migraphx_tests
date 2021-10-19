@@ -13,13 +13,13 @@ migraphx::program load_onnx_file(std::string file_name, migraphx::onnx_options o
     prog.print();
     std::cout << std::endl;
 
-    auto param_names = prog.get_parameter_names();
-    std::cout << "parameter names:" << std::endl;
-    for (auto& name : param_names)
-    {
-        std::cout << "\t" << name;
-    }
-    std::cout << std::endl;
+    //auto param_names = prog.get_parameter_names();
+    //std::cout << "parameter names:" << std::endl;
+    //for (auto& name : param_names)
+    //{
+    //    std::cout << "\t" << name;
+    //}
+    //std::cout << std::endl;
 
     return prog;
 }

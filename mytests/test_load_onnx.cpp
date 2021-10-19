@@ -5,6 +5,7 @@
 #include <migraphx/literal.hpp>
 #include <migraphx/quantization.hpp>
 #include <migraphx/operators.hpp>
+#include <migraphx/iterator_for.hpp>
 #include <migraphx/program.hpp>
 #include <migraphx/instruction.hpp>
 #include <migraphx/gpu/target.hpp>
@@ -13,6 +14,16 @@
 #include "read_shape.hpp"
 #include "cmd_options.hpp"
 
+void print_mod(const migraphx::module& m)
+{
+    std::cout << "mod_name = " << m.name() << std::endl;
+    for (auto ins : iterator_for(m))
+    {
+        std::cout << "ins: " << ins->name() << ", in_mod: " << m.has_instruction(ins) << std::endl;
+    }
+    std::cout << std::endl;
+}
+
 void print_param_shapes(const migraphx::program& p)
 {
     std::cout << "============parameter names and shapes============" << std::endl;
@@ -20,6 +31,17 @@ void print_param_shapes(const migraphx::program& p)
     for (auto& pm : param_shapes)
     {
         std::cout << "name = " << pm.first << ", shape = " << pm.second << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+void print_param_names(const migraphx::program& p)
+{
+    std::cout << "============parameter names============" << std::endl;
+    auto param_names = p.get_parameter_names();
+    for (auto& nm : param_names)
+    {
+        std::cout << "name = " << nm << std::endl;
     }
     std::cout << std::endl;
 }
@@ -44,25 +66,30 @@ void load_onnx_file(std::string file_name, migraphx::onnx_options options)
     std::cout << prog << std::endl;
     std::cout << std::endl;
 
+//    quantize_fp16(prog);
+
     auto p1 = prog;
     std::cout << "p1 = " << std::endl;
     std::cout << p1;
     print_param_shapes(p1);
     print_output_shapes(p1);
-    
-
-    p1.compile(migraphx::ref::target{});
+    print_param_names(p1);
+    migraphx::compile_options cmp_options;
+    cmp_options.offload_copy = true;
+    std::cout << "*******************Before compiling on REF*********************** " << std::endl;
+    p1.compile(migraphx::ref::target{}, cmp_options);
     std::cout << "After compiling on REF, program is: " << std::endl;
-    std::cout << p1;
+    std::cout << p1 << std::endl;
     print_param_shapes(p1);
     print_output_shapes(p1);
 
-    prog.compile(migraphx::gpu::target{});
-
+    std::cout << "*******************Before compiling on GPU*********************** " << std::endl;
+    prog.compile(migraphx::gpu::target{}, cmp_options);
     std::cout << "After compiling on GPU, program is: " << std::endl;
     std::cout << prog;
     print_param_shapes(prog);
     print_output_shapes(prog);
+    print_param_names(prog);
 }
 
 int main(int argc, char **argv) {

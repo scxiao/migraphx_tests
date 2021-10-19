@@ -26,7 +26,8 @@ def read_pb_file(filename):
     tensor = onnx.TensorProto()
     tensor.ParseFromString(data_str)
     np_array = numpy_helper.to_array(tensor)
-    print("input_shape = {}".format(np_array.shape))
+    print("data_shape = {}".format(np_array.shape))
+    print("data = {}".format(np_array))
 
     return np_array
 

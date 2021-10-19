@@ -15,6 +15,7 @@
 #include <migraphx/gpu/hip.hpp>
 #include <migraphx/manage_ptr.hpp>
 #include <migraphx/type_name.hpp>
+#include <migraphx/make_op.hpp>
 #include "test.hpp"
 
 using parameter_map = migraphx::parameter_map;
@@ -165,6 +166,7 @@ struct run_options {
 template <class T>
 void run_prog(migraphx::program p, std::vector<std::vector<T>> &resData, const run_options& options)
 {
+    const auto& param_names = p.get_parameter_names();
     migraphx::compile_options c_options;
     c_options.offload_copy = options.offload_copy;
     auto& t = options.t;
@@ -199,7 +201,7 @@ void run_prog(migraphx::program p, std::vector<std::vector<T>> &resData, const r
         else if (x.second.type() == migraphx::shape::int32_type or
             x.second.type() == migraphx::shape::int64_type)
         {
-            auto&& argu = migraphx::fill_argument(x.second, 1);
+            auto&& argu = migraphx::fill_argument(x.second, 5);
             std::cout << "argu_int = " << argu << std::endl;
             m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
         }
@@ -209,31 +211,42 @@ void run_prog(migraphx::program p, std::vector<std::vector<T>> &resData, const r
             std::cout << "argu_bool = " << argu << std::endl;
             m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
         }
+        else if (x.second.type() == migraphx::shape::tuple_type)
+        {
+            auto vec_ss = x.second.sub_shapes();
+            std::vector<migraphx::argument> args;
+            for (auto& ss : vec_ss)
+            {
+                auto&& argu = migraphx::generate_argument(ss, get_hash(x.first));
+                args.push_back(options.offload_copy ? argu : t.copy_to(argu));
+            }
+            m[x.first] = migraphx::argument(args);
+        }
         else
         {
             //auto&& argu = gen_argument(x.second, get_hash(x.first));
             auto&& argu = migraphx::generate_argument(x.second, get_hash(x.first));
-            // std::cout << "argu = " << argu << std::endl;
-            std::vector<float> vec_arg;
-            argu.visit([&](auto v) { vec_arg.assign(v.begin(), v.end()); });
+            std::vector<float> vec;
+            argu.visit([&](auto v) { vec.assign(v.begin(), v.end()); });
+            std::cout << "argu = " << vec << std::endl;
             m[x.first] = options.offload_copy ? argu : t.copy_to(argu);
         }
     }
 
-    if (options.iter_num > 0)
-        p.eval(m);
-
-    std::cout << "Begin execution, " << options.iter_num << " iterations...." << std::endl;
-    auto start = std::chrono::steady_clock::now();
-    for (int i = 0; i < options.iter_num; ++i)
-    {
-        p.eval(m);
-        t.get_context().finish();
-    }
-    auto end = std::chrono::steady_clock::now();
-    auto milli_seconds = std::chrono::duration_cast<milliseconds>(end - start).count();
-    std::cout << "time per iteration = " << milli_seconds / options.iter_num << std::endl;
-    std::cout << "End execution ...." << std::endl;
+//    if (options.iter_num > 0)
+//        p.eval(m);
+//
+//    std::cout << "Begin execution, " << options.iter_num << " iterations...." << std::endl;
+//    auto start = std::chrono::steady_clock::now();
+//    for (int i = 0; i < options.iter_num; ++i)
+//    {
+//        p.eval(m);
+//        t.get_context().finish();
+//    }
+//    auto end = std::chrono::steady_clock::now();
+//    auto milli_seconds = std::chrono::duration_cast<milliseconds>(end - start).count();
+//    std::cout << "time per iteration = " << milli_seconds / options.iter_num << std::endl;
+//    std::cout << "End execution ...." << std::endl;
     auto results = p.eval(m);
 
     std::size_t i = 0;
