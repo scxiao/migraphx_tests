@@ -112,11 +112,19 @@ int main(int argc, char **argv)
     auto model_path_name = get_model_name(argv[1]);
     auto param_names = get_model_param_names(model_path_name);
 
+
     // retrieve all test cases
     auto test_cases = get_test_cases(argv[1]);
     // sample test case
     auto sample_test_case = test_cases.front();
     auto param_shapes = get_input_shapes(sample_test_case, param_names);
+
+    std::cout << "Model parameter name and shapes:" << std::endl;
+    for(const auto& name : param_names)
+    {
+        std::cout << "name: " << name << ", shape = " << param_shapes[name] << std::endl;
+    }
+    std::cout << std::endl;
 
     // set the param to corresponding dims
     migraphx::onnx_options parse_options;
@@ -129,14 +137,21 @@ int main(int argc, char **argv)
         }
     }
 
+    std::cout << "Parsing input model \"" << model_path_name << "\" ......" << std::endl;
     migraphx::program p = migraphx::parse_onnx(model_path_name.c_str(), parse_options);
+    std::cout << "Done parsing model ......" << std::endl;
+
     auto out_shapes = p.get_output_shapes();
     migraphx::compile_options options;
     options.set_offload_copy();
+
+    std::cout << "\nCompiling program ..." << std::endl;
     p.compile(migraphx::target(target.c_str()), options);
+    std::cout << "Done compiling program ..." << std::endl;
 
     auto model_name = get_path_last_folder(model_path_name);
 
+    std::cout << "\nBegin execution ..... " << std::endl;
     int correct_num = 0;
     for(const auto& test_case : test_cases)
     {

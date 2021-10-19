@@ -9,53 +9,13 @@
 #include <cmath>
 #include <unordered_map>
 #include <hip/hip_fp16.h>
+#include "utilities.hpp"
 #include <migraphx/migraphx.hpp>
 
 template <class T>
 auto get_hash(const T& x)
 {
     return std::hash<T>{}(x);
-}
-
-template<class T>
-void print_vec(std::ostream& os, const std::vector<T>& vec, std::size_t column_size)
-{
-    os << "{";
-    if (vec.size() <= 8 * column_size)
-    {
-        for (std::size_t i = 0; i < vec.size(); ++i)
-        {
-            if (i == vec.size() - 1) os << vec[i];
-            else os << vec[i] << ", ";
-            if ((i + 1) % column_size == 0)
-            {
-                os << std::endl;
-            }
-        }
-    }
-    else
-    {
-        for (std::size_t i = 0; i < 4 * column_size; ++i)
-        {
-            os << vec[i] << ", ";
-            if ((i + 1) % column_size == 0)
-            {
-                os << std::endl;
-            }
-        }
-        os << "..." << std::endl;
-        std::size_t offset = vec.size() - 4 * column_size;
-        for (std::size_t i = 0; i < 4 * column_size; ++i)
-        {
-            if (i == vec.size() - 1) os << vec[i + offset];
-            else os << vec[i + offset] << ", ";
-            if ((i + 1) % column_size == 0)
-            {
-                os << std::endl;
-            }
-        }
-    }
-    os << "}";
 }
 
 std::string type_name(migraphx_shape_datatype_t type)
@@ -82,13 +42,6 @@ std::string type_name(migraphx_shape_datatype_t type)
     }
 
     return type_name[type];
-}
-
-template<class T>
-std::ostream& operator << (std::ostream& os, const std::vector<T>& vec)
-{
-    print_vec(os, vec, 8);
-    return os;
 }
 
 void print_argument(std::ostream& os, const migraphx::argument& arg)
