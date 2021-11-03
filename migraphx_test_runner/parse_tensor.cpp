@@ -188,7 +188,7 @@ migraphx::argument parse_tensor(const onnx::TensorProto& t, std::vector<std::str
     std::abort();
 }
 
-migraphx::argument parse_pb_file(const std::string& file_name, std::vector<std::string>& input_data)
+std::pair<std::string, migraphx::argument> parse_pb_file(const std::string& file_name, std::vector<std::string>& input_data)
 {
     std::fstream input(file_name.c_str(), std::ios::in | std::ios::binary);
 	if (!input.is_open())
@@ -204,16 +204,23 @@ migraphx::argument parse_pb_file(const std::string& file_name, std::vector<std::
         std::abort();
     }
 
-    return parse_tensor(tensor, input_data);
+    if (tensor.name().empty())
+    {
+        std::cout << "Tensor name cannot be empty!" << std::endl;
+        std::abort();
+    }
+
+    return {tensor.name(), parse_tensor(tensor, input_data)};
 }
 
 static std::vector<std::size_t> get_tensor_dims(const onnx::TensorProto& t)
 {
     std::vector<std::size_t> dims(t.dims().begin(), t.dims().end());
+    std::cout << "dim = " << dims << std::endl;
     return dims;
 }
 
-std::vector<std::size_t> get_input_dims(const std::string& file_name)
+std::pair<std::string, std::vector<std::size_t>> get_input_dims(const std::string& file_name)
 {
     std::fstream input(file_name.c_str(), std::ios::in | std::ios::binary);
 	if (!input.is_open())
@@ -229,7 +236,13 @@ std::vector<std::size_t> get_input_dims(const std::string& file_name)
         std::abort();
     }
 
-    return get_tensor_dims(tensor);
+    if (tensor.name().empty())
+    {
+        std::cout << "Tensor name cannot be empty!" << std::endl;
+        std::abort();
+    }
+
+    return {tensor.name(), get_tensor_dims(tensor)};
 }
 
 

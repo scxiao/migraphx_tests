@@ -193,14 +193,14 @@ void retrieve_argument_data(const migraphx::argument& argu, std::vector<T>& outp
 }
 
 template<typename T>
-bool compare_results(const T& cpu_res, const T& gpu_res, double eps)
+bool compare_results(const T& gold, const T& actual, double eps)
 {
     bool passed = true;
-    std::size_t cpu_size = cpu_res.size();
+    std::size_t cpu_size = gold.size();
     float fmax_diff = 0.0f;
     size_t max_index = 0;
     for (std::size_t i = 0; i < cpu_size; i++) {
-        auto diff = fabs(cpu_res[i] - gpu_res[i]);
+        auto diff = fabs(gold[i] - actual[i]);
         if (diff > eps)
         {
             if (fmax_diff < diff) 
@@ -209,16 +209,16 @@ bool compare_results(const T& cpu_res, const T& gpu_res, double eps)
                 max_index = i;
                 passed = false;
             }
-            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
-                gpu_res[i] << ")!!!!!!" << std::endl;
+            std::cout << "gold[" << i << "] (" << gold[i] << ") != actual[" << i << "] (" <<
+                actual[i] << ")!!!!!!" << std::endl;
         }
     }
 
     if (!passed)
     {
         size_t i = max_index;
-        std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
-            gpu_res[i] << ")!!!!!!" << std::endl;
+        std::cout << "gold[" << i << "] (" << gold[i] << ") != actual[" << i << "] (" <<
+            actual[i] << ")!!!!!!" << std::endl;
 
         std::cout << "max_diff = " << fmax_diff << std::endl;
     }
@@ -226,15 +226,15 @@ bool compare_results(const T& cpu_res, const T& gpu_res, double eps)
     return passed;
 }
 
-bool compare_results(const std::vector<int64_t>& cpu_res, const std::vector<int64_t>& gpu_res)
+bool compare_results(const std::vector<int64_t>& gold, const std::vector<int64_t>& actual)
 {
     bool passed = true;
-    std::size_t cpu_size = cpu_res.size();
+    std::size_t cpu_size = gold.size();
     for (std::size_t i = 0; i < cpu_size; i++) {
-        if (cpu_res[i] - gpu_res[i] != 0)
+        if (gold[i] - actual[i] != 0)
         {
-            std::cout << "cpu_result[" << i << "] (" << cpu_res[i] << ") != gpu_result[" << i << "] (" <<
-                gpu_res[i] << ")!!!!!!" << std::endl;
+            std::cout << "gold[" << i << "] (" << gold[i] << ") != actual[" << i << "] (" <<
+                actual[i] << ")!!!!!!" << std::endl;
             passed = false;
         }
     }
@@ -263,27 +263,27 @@ bool compare_shapes(const migraphx::shape& s1, const migraphx::shape& s2)
     return true;
 }
 
-bool compare_results(const migraphx::argument& arg1, const migraphx::argument& arg2, double eps = 0.001)
+bool compare_results(const migraphx::argument& gold, const migraphx::argument& actual, double eps = 0.001)
 {
-    if (not compare_shapes(arg1.get_shape(), arg2.get_shape()))
+    if (not compare_shapes(gold.get_shape(), actual.get_shape()))
     {
         return false;
     }
 
-    auto type = arg1.get_shape().type();
+    auto type = gold.get_shape().type();
     if (type == migraphx_shape_double_type or type == migraphx_shape_float_type or migraphx_shape_half_type)
     {
         std::vector<double> res1, res2;
-        retrieve_argument_data(arg1, res1);
-        retrieve_argument_data(arg2, res2);
+        retrieve_argument_data(gold, res1);
+        retrieve_argument_data(actual, res2);
 
         return compare_results(res1, res2, eps);
     }
     else
     {
         std::vector<int64_t> res1, res2;
-        retrieve_argument_data(arg1, res1);
-        retrieve_argument_data(arg2, res2);
+        retrieve_argument_data(gold, res1);
+        retrieve_argument_data(actual, res2);
 
         return compare_results(res1, res2);        
     }

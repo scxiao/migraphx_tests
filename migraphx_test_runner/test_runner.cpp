@@ -12,11 +12,20 @@ static std::unordered_map<std::string, migraphx::argument> get_input_from_files(
         std::vector<std::string>& input_data)
 {
     std::unordered_map<std::string, migraphx::argument> results;
-    std::size_t i = 0;
+    for (std::size_t i = 0; i < param_names.size(); ++i)
+    {
+        std::string pb_file_name = test_case + "/input_" + std::to_string(i) + ".pb";
+        auto res = parse_pb_file(pb_file_name, input_data);
+        results[res.first] = res.second;
+    }
+
     for (auto name : param_names)
     {
-        std::string pb_file_name = test_case + "/input_" + std::to_string(i++) + ".pb";
-        results[name] = parse_pb_file(pb_file_name, input_data);
+        if (results.count(name) == 0)
+        {
+            std::cout << "Input \"" << name << "\" in test case \"" << test_case << "\" does not exists!" << std::endl;
+            std::abort();
+        }
     }
 
     return results;
@@ -25,23 +34,33 @@ static std::unordered_map<std::string, migraphx::argument> get_input_from_files(
 static std::unordered_map<std::string, std::vector<std::size_t>> get_input_shapes(const std::string& test_case, std::vector<std::string> param_names)
 {
     std::unordered_map<std::string, std::vector<std::size_t>> results;
-    std::size_t i = 0;
+    for (std::size_t i = 0; i < param_names.size(); ++i)
+    {
+        std::string pb_file_name = test_case + "/input_" + std::to_string(i) + ".pb";
+        auto res = get_input_dims(pb_file_name);
+        results[res.first] = res.second;
+    }
+    
     for (auto name : param_names)
     {
-        std::string pb_file_name = test_case + "/input_" + std::to_string(i++) + ".pb";
-        results[name] = get_input_dims(pb_file_name);
+        if (results.count(name) == 0)
+        {
+            std::cout << "Dim \"" << name << "\" in test case \"" << test_case << "\" does not exists!" << std::endl;
+            std::abort();
+        }
     }
 
     return results;
 }
 
-static std::vector<migraphx::argument> get_outputs(const std::string& test_case, const std::size_t out_num, std::vector<std::string>& out_data)
+static std::unordered_map<std::string, migraphx::argument> get_outputs(const std::string& test_case, const std::size_t out_num, std::vector<std::string>& out_data)
 {
-    std::vector<migraphx::argument> results;
+    std::unordered_map<std::string, migraphx::argument> results;
     for (std::size_t i = 0; i < out_num; ++i)
     {
         std::string pb_file_name = test_case + "/output_" + std::to_string(i) + ".pb";
-        results.push_back(parse_pb_file(pb_file_name, out_data));
+        auto res = parse_pb_file(pb_file_name, out_data);
+        results[res.first] = res.second;
     }
 
     return results;
@@ -110,8 +129,8 @@ int main(int argc, char **argv)
     std::cout << "Run test \"" << argv[1] << "\" on \"" << target << "\":" << std::endl << std::endl;
 
     auto model_path_name = get_model_name(argv[1]);
-    auto param_names = get_model_param_names(model_path_name);
-
+    auto param_names = model_param_names(model_path_name);
+    auto output_names = model_output_names(model_path_name);
 
     // retrieve all test cases
     auto test_cases = get_test_cases(argv[1]);
@@ -173,19 +192,30 @@ int main(int argc, char **argv)
         bool correct = true;
         for (std::size_t i = 0; i < out_num; ++i)
         {
-            auto gold = gold_outputs.at(i);
+            if(gold_outputs.count(output_names[i]) == 0)
+            {
+                std::cout << "Output \"" << output_names[i] << "\" does not exists!" << std::endl;
+                std::abort();
+            }
+            auto gold = gold_outputs.at(output_names[i]);
             auto output = outputs[i];
 
+            std::cout << "Output " << i << " ................ ";
             if (not compare_results(gold, output))
             {
-                std::cout << "Expected output:" << std::endl;
+                std::cout << "\nExpected output:" << std::endl;
                 std::cout << gold << std::endl;
                 std::cout << "..." << std::endl;
                 std::cout << "Actual output:" << std::endl;
-                std::cout << output << std::endl;
+                std::cout << output << std::endl << std::endl;
                 correct = false;
             }
+            else
+            {
+                std::cout << "is the same!" << std::endl << std::endl;
+            }
         }
+        std::cout << std::endl;
         std::cout << "\tTest case \"" << case_name << "\": " << (correct ? "PASSED" : "FAILED") << std::endl;
         correct_num += static_cast<int>(correct);
     }
