@@ -158,6 +158,7 @@ void retrieve_argument_data(const migraphx::argument& argu, std::vector<T>& outp
     else if (type == migraphx_shape_int64_type)
     {
         int64_t *ptr = reinterpret_cast<int64_t*>(argu.data());
+        std::cout << "val = " << *ptr << std::endl;
         assign_value(ptr, elem_num, output);
     }
     else if (type == migraphx_shape_int8_type)

@@ -1,5 +1,6 @@
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <numeric>
 #include <onnx.pb.h>
 #include <string>
 #include <fstream>
@@ -9,27 +10,9 @@
 #include <hip/hip_fp16.h>
 #include <cassert>
 #include "parse_tensor.hpp"
+#include "utilities.hpp"
 
 using node_map = std::unordered_map<std::string, onnx::NodeProto>;
-
-template<class T>
-static void print(std::ostream& os, const std::vector<T>& dims)
-{
-    os << "{";
-    for (std::size_t i = 0; i < dims.size(); ++i)
-    {
-        if (i != 0) os << ", ";
-        os << dims[i];
-    }
-    os << "}";
-}
-
-template<class T>
-static std::ostream& operator << (std::ostream& os, const std::vector<T>& dims)
-{
-    print(os, dims);
-    return os;
-}
 
 template<class T>
 migraphx::argument create_argument(migraphx_shape_datatype_t type, 
@@ -94,6 +77,7 @@ migraphx_shape_datatype_t get_type(int dtype)
 migraphx::argument parse_tensor(const onnx::TensorProto& t, std::vector<std::string>& input_data)
 {
     std::vector<std::size_t> dims(t.dims().begin(), t.dims().end());
+    // auto elem_num = std::accumulate(dims.begin(), dims.end(), 0);
     if(not t.external_data().empty())
     {
         const std::string& data_file = t.external_data().at(0).value();
@@ -109,6 +93,15 @@ migraphx::argument parse_tensor(const onnx::TensorProto& t, std::vector<std::str
         const std::string& s = t.raw_data();
         input_data.push_back(s);
         auto type            = get_type(t.data_type());
+        // if(type == migraphx_shape_int64_type)
+        // {
+        //     const int64_t* ptr = reinterpret_cast<const int64_t*>(s.data());
+        //     std::vector<int64_t> data(ptr, ptr + elem_num);
+        //     char* cptr = reinterpret_cast<char*>(data.data());
+        //     std::copy(cptr, cptr + elem_num * sizeof(int64_t), input_data.back().data());
+        //     std::cout << "data = " << data << std::endl;
+        //     return create_argument(migraphx_shape_int64_type, dims, input_data.back().data());
+        // }
         return create_argument(type, dims, input_data.back().data());
     }
 
@@ -152,6 +145,7 @@ migraphx::argument parse_tensor(const onnx::TensorProto& t, std::vector<std::str
     case onnx::TensorProto::INT64: 
     {
         std::vector<int64_t> data(t.int64_data().begin(), t.int64_data().end());
+        std::cout << "int64_t = " << data << std::endl;
         return create_argument(migraphx_shape_int64_type, dims, data);
     }
     case onnx::TensorProto::UINT64:
@@ -216,7 +210,6 @@ std::pair<std::string, migraphx::argument> parse_pb_file(const std::string& file
 static std::vector<std::size_t> get_tensor_dims(const onnx::TensorProto& t)
 {
     std::vector<std::size_t> dims(t.dims().begin(), t.dims().end());
-    std::cout << "dim = " << dims << std::endl;
     return dims;
 }
 
