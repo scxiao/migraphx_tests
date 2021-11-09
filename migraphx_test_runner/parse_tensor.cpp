@@ -12,6 +12,21 @@
 #include "parse_tensor.hpp"
 #include "utilities.hpp"
 
+template <typename T>
+std::shared_ptr<T> make_shared_array(size_t size)
+{
+    return std::shared_ptr<T>(new T[size](), std::default_delete<T[]>());
+}
+
+template <class T, class Iterator>
+std::shared_ptr<T> make_shared_array(Iterator start, Iterator last)
+{
+    auto result = make_shared_array<T>(std::distance(start, last));
+    std::copy(start, last, result.get());
+    return result;
+}
+
+
 using node_map = std::unordered_map<std::string, onnx::NodeProto>;
 
 template<class T>
@@ -25,10 +40,10 @@ migraphx::argument create_argument(migraphx_shape_datatype_t type,
 
 migraphx::argument create_argument(migraphx_shape_datatype_t type, 
                                    const std::vector<std::size_t>& dims, 
-                                   const char* data)
+                                   const std::string& data)
 {
     migraphx::shape s(type, dims);
-    return {s, (void*)data};
+    return {s, (void*)data.data()};
 }
 
 std::vector<char> read_pb_file(const std::string& filename)
@@ -74,35 +89,26 @@ migraphx_shape_datatype_t get_type(int dtype)
     }
 }
 
-migraphx::argument parse_tensor(const onnx::TensorProto& t, std::vector<std::string>& input_data)
+migraphx::argument parse_tensor(const onnx::TensorProto& t, std::vector<std::string>& io_data)
 {
     std::vector<std::size_t> dims(t.dims().begin(), t.dims().end());
-    // auto elem_num = std::accumulate(dims.begin(), dims.end(), 0);
     if(not t.external_data().empty())
     {
         const std::string& data_file = t.external_data().at(0).value();
         std::string path = ".";
         auto raw_buffer              = read_pb_file(path + "/" + data_file);
         std::string s(raw_buffer.begin(), raw_buffer.end());
-        input_data.push_back(s);
+        io_data.push_back(s);
         auto type = get_type(t.data_type());
-        return create_argument(type, dims, input_data.back().data());
+        return create_argument(type, dims, io_data.back().data());
     }
     if(t.has_raw_data())
     {
         const std::string& s = t.raw_data();
-        input_data.push_back(s);
+        io_data.push_back(s);
         auto type            = get_type(t.data_type());
-        // if(type == migraphx_shape_int64_type)
-        // {
-        //     const int64_t* ptr = reinterpret_cast<const int64_t*>(s.data());
-        //     std::vector<int64_t> data(ptr, ptr + elem_num);
-        //     char* cptr = reinterpret_cast<char*>(data.data());
-        //     std::copy(cptr, cptr + elem_num * sizeof(int64_t), input_data.back().data());
-        //     std::cout << "data = " << data << std::endl;
-        //     return create_argument(migraphx_shape_int64_type, dims, input_data.back().data());
-        // }
-        return create_argument(type, dims, input_data.back().data());
+        auto arg = create_argument(type, dims, io_data.back());
+        return arg;
     }
 
     switch(t.data_type())
@@ -145,7 +151,6 @@ migraphx::argument parse_tensor(const onnx::TensorProto& t, std::vector<std::str
     case onnx::TensorProto::INT64: 
     {
         std::vector<int64_t> data(t.int64_data().begin(), t.int64_data().end());
-        std::cout << "int64_t = " << data << std::endl;
         return create_argument(migraphx_shape_int64_type, dims, data);
     }
     case onnx::TensorProto::UINT64:

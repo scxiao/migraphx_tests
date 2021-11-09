@@ -8,6 +8,7 @@ add_definitions(-D__HIP_PLATFORM_HCC__)
 set (MIGRAPHX_FOLDER /home/scxiao/Workplace/projects/MIGraph)
 #set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build_debug)
 set (MIGRAPHX_BUILD ${MIGRAPHX_FOLDER}/build)
+#set (CMAKE_CXX_COMPILER /opt/rocm-4.3.1/llvm/bin/clang++)
 
 set (DEPS_FOLDER deps_json)
 set (MIGRAPHX_DEPS /home/scxiao/Workplace/projects/MIGraph/${DEPS_FOLDER}/lib
