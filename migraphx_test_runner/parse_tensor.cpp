@@ -203,12 +203,6 @@ std::pair<std::string, migraphx::argument> parse_pb_file(const std::string& file
         std::abort();
     }
 
-    if (tensor.name().empty())
-    {
-        std::cout << "Tensor name cannot be empty!" << std::endl;
-        std::abort();
-    }
-
     return {tensor.name(), parse_tensor(tensor, input_data)};
 }
 
@@ -231,12 +225,6 @@ std::pair<std::string, std::vector<std::size_t>> get_input_dims(const std::strin
     if (not tensor.ParseFromIstream(&input))
     {
         std::cout << "Parse tensor from file " << file_name << " error!" << std::endl;
-        std::abort();
-    }
-
-    if (tensor.name().empty())
-    {
-        std::cout << "Tensor name cannot be empty!" << std::endl;
         std::abort();
     }
 
