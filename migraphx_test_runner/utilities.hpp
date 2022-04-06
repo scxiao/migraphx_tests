@@ -58,6 +58,7 @@ template<class T>
 std::ostream& operator << (std::ostream& os, const std::vector<T>& vec)
 {
     print_vec(os, vec, 8);
+    return os;
 }
 
 #endif

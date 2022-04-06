@@ -145,6 +145,11 @@ void retrieve_argument_data(const migraphx::argument& argu, std::vector<T>& outp
         float *ptr = reinterpret_cast<float*>(argu.data());
         assign_value(ptr, elem_num, output);
     }
+    else if (type == migraphx_shape_half_type)
+    {
+        half *ptr = reinterpret_cast<half*>(argu.data());
+        assign_value(ptr, elem_num, output);
+    }
     else if (type == migraphx_shape_double_type)
     {
         double *ptr = reinterpret_cast<double*>(argu.data());
@@ -264,12 +269,16 @@ bool compare_shapes(const migraphx::shape& s1, const migraphx::shape& s2)
     return true;
 }
 
-bool compare_results(const migraphx::argument& gold, const migraphx::argument& actual, double eps = 0.001)
+bool compare_results(const migraphx::argument& gold, const migraphx::argument& actual, double eps = 0.004)
 {
     if (not compare_shapes(gold.get_shape(), actual.get_shape()))
     {
         return false;
     }
+
+    std::cout << "gold = " << gold << std::endl;
+    std::cout << "..." << std::endl;
+    std::cout << "Actual = " << actual << std::endl;
 
     auto type = gold.get_shape().type();
     if (type == migraphx_shape_double_type or type == migraphx_shape_float_type or migraphx_shape_half_type)

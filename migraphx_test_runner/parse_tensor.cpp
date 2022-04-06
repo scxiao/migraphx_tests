@@ -85,6 +85,7 @@ migraphx_shape_datatype_t get_type(int dtype)
     case 13: return migraphx_shape_uint64_type;
     default: { 
 		std::cout << "Prototensor data type " << std::to_string(dtype) << " not supported" << std::endl;
+        std::abort();
     }
     }
 }
